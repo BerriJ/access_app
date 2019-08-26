@@ -1,10 +1,13 @@
 library(shiny)
+library(DT)
 
 # Define UI for app that draws a histogram ----
 ui <- fluidPage(
     
     # App title ----
-    titlePanel("Hello Martin!"),
+    titlePanel(
+        h1(textOutput("nme"), align = "center")
+    ),
     
     # Sidebar layout with input and output definitions ----
     sidebarLayout(
@@ -12,21 +15,55 @@ ui <- fluidPage(
         # Sidebar panel for inputs ----
         sidebarPanel(
             
-            # Input: Slider for the number of bins ----
-            sliderInput(inputId = "bins",
-                        label = "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
+            fluidRow(align = "center",
+                textInput("nme", label = h3("Name"), value = ""),
+                
+                textInput("mtrklnr", label = h3("Matrikel Nr."), value = "")
+            ),
             
+            fluidRow(align = "center",
+            
+            actionButton("accept",
+                         "Accept",
+                         style = "color: black;
+                         background-color: #209400;
+                         width: 100px;
+                         height: 50px"),
+            
+            actionButton("decline",
+                         "Decline",
+                         style = "color: black;
+                         background-color: #940000;
+                         width: 100px;
+                         height: 50px")),
+            
+            fluidRow(align = "center",
+            
+            actionButton("revert",
+                         "Revert",
+                         style = "color: black;
+                         background-color: #424242;
+                         width: 100px;
+                         height: 50px"),
+            actionButton("load",
+                         "Load file",
+                         style = "color: black;
+                         background-color: #424242;
+                         width: 100px;
+                         height: 50px")
+            )
         ),
         
         # Main panel for displaying outputs ----
         mainPanel(
             
-            # Output: Histogram ----
-            plotOutput(outputId = "distPlot")
-            
+            tabsetPanel(
+                tabPanel("Accepted", tableOutput("studtable_accept")),
+                
+                tabPanel("Open", tableOutput("studtable_open")),
+                
+                tabPanel("WNote", tableOutput("studtable_note"))
+            )
         )
     )
 )
@@ -34,25 +71,29 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram ----
 server <- function(input, output) {
     
-    # Histogram of the Old Faithful Geyser Data ----
-    # with requested number of bins
-    # This expression that generates a histogram is wrapped in a call
-    # to renderPlot to indicate that:
-    #
-    # 1. It is "reactive" and therefore should be automatically
-    #    re-executed when inputs (input$bins) change
-    # 2. Its output type is a plot
-    output$distPlot <- renderPlot({
-        
-        x    <- faithful$waiting
-        bins <- seq(min(x), max(x), length.out = input$bins + 1)
-        
-        hist(x, breaks = bins, col = "#75AADB", border = "white",
-             xlab = "Waiting time to next eruption (in mins)",
-             main = "Histogram of waiting times")
-        
+    load("students.rda", envir = .GlobalEnv)
+    
+    output$nme <- renderText({ 
+        paste(students[students$Matr.Number == input$mtrklnr, "Name"])
     })
     
+    rv <- reactiveValues(students = students)
+    
+    output$studtable_accept <- renderTable(rv$students %>%
+                                        dplyr::filter(Accepted == TRUE))
+    
+    output$studtable_open <- renderTable(rv$students %>%
+                                             dplyr::filter(Accepted == FALSE))
+    
+    output$studtable_note <- renderTable(rv$students %>%
+                                        dplyr::filter(!is.na(note)))
+    
+    observeEvent(input$accept, {
+        print("accept")
+        
+        rv$students[rv$students$Matr.Number == input$mtrklnr, "Accepted"] <- TRUE
+
+    })  
 }
 
 shinyApp(ui = ui, server = server)
