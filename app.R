@@ -187,7 +187,7 @@ server <- function(input, output, session) {
         # Update the CSV File
         write.csv2(file = "students.csv", x = rv$students, row.names = FALSE)
         # Save a backup
-        write.csv2(file = paste("log/students ", Sys.time(), ".csv", sep = ""), x = rv$students, row.names = FALSE)
+        write.csv2(file = paste("log/students ", Sys.Date, ".csv", sep = ""), x = rv$students, row.names = FALSE)
     })
     
 }
