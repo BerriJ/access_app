@@ -78,14 +78,14 @@ server <- function(input, output, session) {
     
     rv <- reactiveValues(students = read.csv2("students.csv", 
                                               stringsAsFactors = FALSE))
-
+    
     shinyDirChoose(input, "savedir",
-                   roots = c(main = "~"),
+                   roots = getVolumes(),
                    defaultRoot = "main",
                    session=session)
     
     observeEvent(input$savedir, {
-        dirinfo <- parseDirPath(c(main = "~"), input$savedir)
+        dirinfo <- parseDirPath(getVolumes(), input$savedir)
         print(dirinfo)
     })
     
