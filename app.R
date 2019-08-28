@@ -52,7 +52,10 @@ ui <- fluidPage(
                          background-color: #e06500;
                          width: 100px;
                          height: 50px")
-                     )
+                     ),
+            
+            fluidRow(align = "center",
+                     shinyDirButton("savedir", "Save folder", "Save folder"))
             
         ),
         
@@ -76,6 +79,16 @@ server <- function(input, output, session) {
     rv <- reactiveValues(students = read.csv2("students.csv", 
                                               stringsAsFactors = FALSE))
 
+    shinyDirChoose(input, "savedir",
+                   roots = c(main = "~"),
+                   defaultRoot = "main",
+                   session=session)
+    
+    observeEvent(input$savedir, {
+        dirinfo <- parseDirPath(c(main = "~"), input$savedir)
+        print(dirinfo)
+    })
+    
     output$nme <- renderText({
         paste(rv$students[rv$students$Matr.Number == input$search, "Name"],
               rv$students[rv$students$Name == input$search, "Name"])
