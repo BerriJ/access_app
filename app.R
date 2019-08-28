@@ -7,7 +7,7 @@ library(shinyFiles)
 ui <- fluidPage(
     
     # Hit enter to accept students
-    tags$head(includeScript("returnClick.js")),
+    # tags$head(includeScript("returnClick.js")),
     
     # App title ----
     titlePanel(
@@ -55,7 +55,9 @@ ui <- fluidPage(
                      ),
             
             fluidRow(align = "center",
-                     shinyDirButton("savedir", "Save folder", "Save folder"))
+                     shinyDirButton("savedir", "Save folder", "Save folder")),
+            
+            h3(textOutput("sum"))
             
         ),
         
@@ -118,13 +120,13 @@ server <- function(input, output, session) {
         rv$students[rv$students$Matr.Number == input$search, "Accepted"] <- TRUE
         rv$students[rv$students$Name == input$search, "Timestamp"] <- paste(
             rv$students[rv$students$Name == input$search, "Timestamp"],
-            Sys.time(), "[D]")
+            Sys.time(), "[A]")
         
         # Accept if searched by number
         rv$students[rv$students$Name == input$search, "Accepted"] <- TRUE
         rv$students[rv$students$Matr.Number == input$search, "Timestamp"] <- paste(
             rv$students[rv$students$Matr.Number == input$search, "Timestamp"],
-            Sys.time(), "[D]")
+            Sys.time(), "[A]")
         
         
         # Clear search field after accepting
