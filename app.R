@@ -1,8 +1,13 @@
 library(shiny)
 library(DT)
+library(dplyr)
+library(shinyFiles)
 
 # Define UI for app that draws a histogram ----
 ui <- fluidPage(
+    
+    # Hit enter to accept students
+    tags$head(includeScript("returnClick.js")),
     
     # App title ----
     titlePanel(
@@ -16,9 +21,7 @@ ui <- fluidPage(
         sidebarPanel(
             
             fluidRow(align = "center",
-                textInput("nme", label = h3("Name"), value = ""),
-                
-                textInput("mtrklnr", label = h3("Matrikel Nr."), value = "")
+                textInput("search", label = h3("Search by Name or Number"), value = "")
             ),
             
             fluidRow(align = "center",
@@ -38,20 +41,19 @@ ui <- fluidPage(
                          height: 50px")),
             
             fluidRow(align = "center",
+                     textInput("note_text", label = h3("Add a Note"), value = "")
+            ),
             
-            actionButton("revert",
-                         "Revert",
-                         style = "color: black;
-                         background-color: #424242;
-                         width: 100px;
-                         height: 50px"),
-            actionButton("load",
-                         "Load file",
-                         style = "color: black;
-                         background-color: #424242;
+            fluidRow(align = "center",
+                     
+                     actionButton("note",
+                                  "Note",
+                                  style = "color: black;
+                         background-color: #e06500;
                          width: 100px;
                          height: 50px")
-            )
+                     )
+            
         ),
         
         # Main panel for displaying outputs ----
@@ -69,15 +71,21 @@ ui <- fluidPage(
 )
 
 # Define server logic required to draw a histogram ----
-server <- function(input, output) {
+server <- function(input, output, session) {
     
-    load("students.rda", envir = .GlobalEnv)
-    
-    output$nme <- renderText({ 
-        paste(students[students$Matr.Number == input$mtrklnr, "Name"])
+    rv <- reactiveValues(students = read.csv2("students.csv", 
+                                              stringsAsFactors = FALSE))
+
+    output$nme <- renderText({
+        paste(rv$students[rv$students$Matr.Number == input$search, "Name"],
+              rv$students[rv$students$Name == input$search, "Name"])
     })
     
-    rv <- reactiveValues(students = students)
+    output$sum <- renderText({
+        paste("Accepted:", sum(rv$students %>%
+                                              dplyr::filter(Accepted == TRUE) %>%
+                                              nrow()))
+    })
     
     output$studtable_accept <- renderTable(rv$students %>%
                                         dplyr::filter(Accepted == TRUE))
@@ -86,14 +94,89 @@ server <- function(input, output) {
                                              dplyr::filter(Accepted == FALSE))
     
     output$studtable_note <- renderTable(rv$students %>%
-                                        dplyr::filter(!is.na(note)))
+                                        dplyr::filter(!is.na(Note)))
+    
+    # Accept Event
     
     observeEvent(input$accept, {
         print("accept")
         
-        rv$students[rv$students$Matr.Number == input$mtrklnr, "Accepted"] <- TRUE
+        # Accept if Searched by name:
+        rv$students[rv$students$Matr.Number == input$search, "Accepted"] <- TRUE
+        rv$students[rv$students$Name == input$search, "Timestamp"] <- paste(
+            rv$students[rv$students$Name == input$search, "Timestamp"],
+            Sys.time(), "[D]")
+        
+        # Accept if searched by number
+        rv$students[rv$students$Name == input$search, "Accepted"] <- TRUE
+        rv$students[rv$students$Matr.Number == input$search, "Timestamp"] <- paste(
+            rv$students[rv$students$Matr.Number == input$search, "Timestamp"],
+            Sys.time(), "[D]")
+        
+        
+        # Clear search field after accepting
+        updateTextInput(session, "search", value = "")
 
-    })  
+    })
+    
+    # Decline Event
+    observeEvent(input$decline, {
+        print("decline")
+        
+        # Accept if Searched by name:
+        rv$students[rv$students$Matr.Number == input$search, "Accepted"] <- FALSE
+        rv$students[rv$students$Name == input$search, "Timestamp"] <- paste(
+            rv$students[rv$students$Name == input$search, "Timestamp"],
+            Sys.time(), "[D]")
+        
+        # Accept if searched by number
+        rv$students[rv$students$Name == input$search, "Accepted"] <- FALSE
+        rv$students[rv$students$Matr.Number == input$search, "Timestamp"] <- paste(
+            rv$students[rv$students$Matr.Number == input$search, "Timestamp"],
+            Sys.time(), "[D]")
+        
+        
+        # Clear search field after accepting
+        updateTextInput(session, "search", value = "")
+        
+    })
+    
+    # Add a note
+    observeEvent(input$note, {
+        print("note")
+        
+        # Take Note by Name
+        rv$students[rv$students$Name == input$search, "Note"] <- paste(
+            rv$students[rv$students$Name == input$search, "Note"], input$note_text)
+        rv$students[rv$students$Name == input$search, "Timestamp"] <- paste(
+            rv$students[rv$students$Name == input$search, "Timestamp"],
+            Sys.time(), "[N]")
+        
+        # Take Note by Number
+        rv$students[rv$students$Matr.Number == input$search, "note"] <- paste(
+            rv$students[rv$students$Matr.Number == input$search, "Note"], input$note_text)
+        rv$students[rv$students$Matr.Number == input$search, "Timestamp"] <- paste(
+            rv$students[rv$students$Matr.Number == input$search, "Timestamp"],
+            Sys.time(), "[N]")
+        
+        
+        # Clear Note field after saving the note
+        updateTextInput(session, "note", value = "")
+        
+    })
+    
+    observeEvent(input$goButton,{
+        output$session <- renderText(function(){
+            list.files(choose.dir())})
+    })
+    
+    observeEvent(rv$students, {
+        # Update the CSV File
+        write.csv2(file = "students.csv", x = rv$students, row.names = FALSE)
+        # Save a backup
+        write.csv2(file = paste("log/students ", Sys.time(), ".csv", sep = ""), x = rv$students, row.names = FALSE)
+    })
+    
 }
 
 shinyApp(ui = ui, server = server)
