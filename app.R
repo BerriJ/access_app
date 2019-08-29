@@ -66,11 +66,11 @@ ui <- fluidPage(
         mainPanel(
             
             tabsetPanel(
-                tabPanel("Accepted", tableOutput("studtable_accept")),
+                tabPanel("Accepted", DT::dataTableOutput("studtable_accept")),
                 
-                tabPanel("Open", tableOutput("studtable_open")),
+                tabPanel("Open", DT::dataTableOutput("studtable_open")),
                 
-                tabPanel("With Note", tableOutput("studtable_note"))
+                tabPanel("With Note", DT::dataTableOutput("studtable_note"))
             )
         )
     )
@@ -83,15 +83,12 @@ server <- function(input, output, session) {
                                               stringsAsFactors = FALSE))
     
     output$nme <- renderText({
-        if(input$search != ""){
             rv$students %>% 
                 dplyr::filter(
-                    grepl(input$search, 
-                          rv$students$Matr.Number, 
-                          fixed = TRUE) | 
+                    str_detect(input$search, 
+                          as.character(rv$students$Matr.Number)) | 
                         Name == input$search) %>% 
-                dplyr::select(Name) %>% unlist() 
-        }
+                dplyr::select(Name) %>% unlist()
     })
     
     output$sum <- renderText({
@@ -104,23 +101,22 @@ server <- function(input, output, session) {
         HTML(paste("Saving Backup to:<br/>", backup_path, "/", sep= ""))
     })
     
-    output$studtable_accept <- renderTable(rv$students %>%
+    output$studtable_accept <- DT::renderDataTable(rv$students %>%
                                         dplyr::filter(Accepted == TRUE) %>%
                                             arrange(desc(Modified)))
     
-    output$studtable_open <- renderTable(rv$students %>%
+    output$studtable_open <- DT::renderDataTable(rv$students %>%
                                              dplyr::filter(Accepted == FALSE))
     
-    output$studtable_note <- renderTable(rv$students %>%
+    output$studtable_note <- DT::renderDataTable(rv$students %>%
                                         dplyr::filter(!is.na(Note)))
     
     # Accept Event
     observeEvent(input$accept, {
         
         # Get Student
-        sid_a <- which(grepl(input$search, 
-                           rv$students$Matr.Number, 
-                           fixed = TRUE) |
+        sid_a <- which(str_detect(input$search, 
+                           as.character(rv$students$Matr.Number)) |
                          rv$students$Name == input$search)
         
         # Accept if single student is selected
@@ -141,9 +137,8 @@ server <- function(input, output, session) {
     observeEvent(input$decline, {
         
         # Get Student
-        sid_d <- which(grepl(input$search, 
-                             rv$students$Matr.Number, 
-                             fixed = TRUE) |
+        sid_d <- which(str_detect(input$search, 
+                                  as.character(rv$students$Matr.Number)) |
                            rv$students$Name == input$search)
         
         if(length(sid_d) == 1){
@@ -163,9 +158,8 @@ server <- function(input, output, session) {
     # Note event
     observeEvent(input$note, {
         
-        sid_n <- which(grepl(input$search, 
-                             rv$students$Matr.Number, 
-                             fixed = TRUE) |
+        sid_n <- which(str_detect(input$search, 
+                                  as.character(rv$students$Matr.Number)) |
                            rv$students$Name == input$search)
         
         # Take Note if single student is selected
