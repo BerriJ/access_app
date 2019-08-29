@@ -2,7 +2,7 @@ library(shiny)
 library(DT)
 library(dplyr)
 library(stringr)
-library(sweetalertR)
+library(shinyWidgets)
 
 
 # Ask for backup path from user
@@ -32,14 +32,14 @@ ui <- fluidPage(
             fluidRow(align = "center",
                      
                      actionButton("accept",
-                                  "Accept",
+                                  "Check In",
                                   style = "color: black;
                          background-color: #209400;
                          width: 100px;
                          height: 50px"),
                      
                      actionButton("decline",
-                                  "Decline",
+                                  "Check Out",
                                   style = "color: black;
                          background-color: #940000;
                          width: 100px;
@@ -68,7 +68,7 @@ ui <- fluidPage(
         mainPanel(
             
             tabsetPanel(
-                tabPanel("Accepted", DT::dataTableOutput("studtable_accept")),
+                tabPanel("Checked In", DT::dataTableOutput("studtable_accept")),
                 
                 tabPanel("Open", DT::dataTableOutput("studtable_open")),
                 
@@ -120,37 +120,52 @@ server <- function(input, output, session) {
                                   as.character(rv$students$Matr.Number)) |
                            rv$students$Name == input$search)
         
-        if(!as.logical(rv$students[sid_a, "Accepted"])){
-            # Accept if single student is selected
-            if(length(sid_a) == 1){
+        # Check if (only) one student is selected
+        if(length(sid_a) == 1){
+            
+            if(!as.logical(rv$students[sid_a, "Accepted"])){
                 rv$students[sid_a, "Accepted"] <- TRUE
-                rv$students[sid_a, "Log"] <- if(is.na(rv$students[sid_a, "Log"])){
-                    paste(Sys.time(), "[A]")} else {
-                        paste(rv$students[sid_a, "Log"],Sys.time(), "[A]")
-                    }
+                rv$students[sid_a, "Log"] <- paste(na.omit(c(rv$students[sid_a, "Log"],Sys.time(), "[A]")), collapse = " ")
                 rv$students[sid_a, "Modified"] <- Sys.time()
                 # Clear search field and refocus
                 updateTextInput(session, "search", value = "")
                 session$sendCustomMessage("focus_search", "focus")
+            } else {
+                sendSweetAlert(session, title = "Already Accepted", 
+                               text = "This student is already checked in! Consider taking a note!")
             }
-        }else{
-            sendSweetAlert(session, title = "Already Accepted", 
-                           text = "Can't check in! This student is already market as accepted")
+        } else {
+            sendSweetAlert(session, title = "Selection", 
+                           text = "Please select one student.")
         }
     })
     
-    observeEvent(input$decline, {
-        confirmSweetAlert(
-            session = session,
-            inputId = "decline_confirm",
-            type = "warning",
-            title = "Want to Decline?",
-            text = "Do you really want to decline? This should rarely be the case.",
-            danger_mode = TRUE
-        )
-    })
-    
     # Decline Event
+    observeEvent(input$decline, {
+        
+        sid_d <- which(str_detect(input$search, 
+                                  as.character(rv$students$Matr.Number)) |
+                           rv$students$Name == input$search)
+        
+        if(length(sid_d) == 1){
+            if(rv$students[sid_d, "Accepted"] == TRUE){
+                confirmSweetAlert(
+                    session = session,
+                    inputId = "decline_confirm",
+                    type = "warning",
+                    title = "Want to check out?",
+                    text = "Do you really want to check out? This should rarely be the case.",
+                    danger_mode = TRUE)
+            } else {
+                sendSweetAlert(session, title = "Can't Check Out!", 
+                               text = "Can't check out! This student is still marked as checked out. Consider taking a note!")
+            }
+            
+        } else {
+            sendSweetAlert(session, title = "Selection", 
+                           text = "Please select one student.")
+        }
+    })
     
     observeEvent(input$decline_confirm, {
         if (isTRUE(input$decline_confirm)) {
@@ -159,18 +174,13 @@ server <- function(input, output, session) {
                                       as.character(rv$students$Matr.Number)) |
                                rv$students$Name == input$search)
             
-            if(length(sid_d) == 1){
                 rv$students[sid_d, "Accepted"] <- FALSE
-                rv$students[sid_d, "Log"] <- if(is.na(rv$students[sid_d, "Log"])){
-                    paste(Sys.time(), "[D]")} else {
-                        paste(rv$students[sid_d, "Log"],Sys.time(), "[D]")
-                    }
+                rv$students[sid_d, "Log"] <- paste(na.omit(c(rv$students[sid_d, "Log"],Sys.time(), "[D]")), collapse = " ")
                 rv$students[sid_d, "Modified"] <- Sys.time()
                 
                 # Clear search field and refocus
                 updateTextInput(session, "search", value = "")
                 session$sendCustomMessage("selectText", "focus")
-            }
         } 
     })
     
@@ -184,19 +194,16 @@ server <- function(input, output, session) {
         # Take Note if single student is selected
         if(length(sid_n) == 1){
             
-            rv$students[sid_n, "Note"] <- if(is.na(rv$students[sid_n, "Note"])){
-                paste(input$note_text)} else{
-                    paste(rv$students[sid_n, "Note"], input$note_text)
-                }
-            rv$students[sid_n, "Log"] <- if(is.na(rv$students[sid_n, "Log"])){
-                paste(Sys.time(), "[N]")} else {
-                    paste(rv$students[sid_n, "Log"],Sys.time(), "[N]")
-                }
+            rv$students[sid_n, "Note"] <- paste(na.omit(c(rv$students[sid_n, "Note"], input$note_text)), collapse = " ")
+            rv$students[sid_n, "Log"] <- paste(na.omit(c(rv$students[sid_n, "Log"],Sys.time(), "[N]")), collapse = " ")
             rv$students[sid_n, "Modified"] <- Sys.time()
             # Clear search field and refocus
             updateTextInput(session, "search", value = "")
             updateTextInput(session, "note_text", value = "")
             session$sendCustomMessage("selectText", "focus")
+        } else {
+            sendSweetAlert(session, title = "Selection", 
+                           text = "Please select one student.")
         }
     })
     
