@@ -2,6 +2,8 @@ library(shiny)
 library(DT)
 library(dplyr)
 library(stringr)
+library(sweetalertR)
+
 
 # Ask for backup path from user
 backup_path <- rstudioapi::selectDirectory()
@@ -11,7 +13,7 @@ ui <- fluidPage(
     
     # Hit enter to accept students
     tags$head(includeScript("refocus_search.js")),
-
+    
     # App title ----
     titlePanel(
         h1(textOutput("nme"), align = "center")
@@ -24,21 +26,21 @@ ui <- fluidPage(
         sidebarPanel(
             
             fluidRow(align = "center",
-                textInput("search", label = h3("Search by Name or Number"), value = "")
+                     textInput("search", label = h3("Search by Name or Number"), value = "")
             ),
             
             fluidRow(align = "center",
-            
-            actionButton("accept",
-                         "Accept",
-                         style = "color: black;
+                     
+                     actionButton("accept",
+                                  "Accept",
+                                  style = "color: black;
                          background-color: #209400;
                          width: 100px;
                          height: 50px"),
-            
-            actionButton("decline",
-                         "Decline",
-                         style = "color: black;
+                     
+                     actionButton("decline",
+                                  "Decline",
+                                  style = "color: black;
                          background-color: #940000;
                          width: 100px;
                          height: 50px")),
@@ -55,7 +57,7 @@ ui <- fluidPage(
                          background-color: #e06500;
                          width: 100px;
                          height: 50px")
-                     ),
+            ),
             
             h3(textOutput("sum")),
             htmlOutput("backup")
@@ -133,26 +135,39 @@ server <- function(input, output, session) {
         }
     })
     
-    # Decline Event
     observeEvent(input$decline, {
-        
-        # Get Student
-        sid_d <- which(str_detect(input$search, 
-                                  as.character(rv$students$Matr.Number)) |
-                           rv$students$Name == input$search)
-        
-        if(length(sid_d) == 1){
-            rv$students[sid_d, "Accepted"] <- FALSE
-            rv$students[sid_d, "Log"] <- if(is.na(rv$students[sid_d, "Log"])){
-                paste(Sys.time(), "[D]")} else {
-                    paste(rv$students[sid_d, "Log"],Sys.time(), "[D]")
-                }
-            rv$students[sid_d, "Modified"] <- Sys.time()
+        confirmSweetAlert(
+            session = session,
+            inputId = "decline_confirm",
+            type = "warning",
+            title = "Want to Decline?",
+            text = "Do you really want to decline? This should rarely be the case.",
+            danger_mode = TRUE
+        )
+    })
+    
+    # Decline Event
+    
+    observeEvent(input$decline_confirm, {
+        if (isTRUE(input$decline_confirm)) {
             
-            # Clear search field and refocus
-            updateTextInput(session, "search", value = "")
-            session$sendCustomMessage("selectText", "focus")
-        }
+            sid_d <- which(str_detect(input$search, 
+                                      as.character(rv$students$Matr.Number)) |
+                               rv$students$Name == input$search)
+            
+            if(length(sid_d) == 1){
+                rv$students[sid_d, "Accepted"] <- FALSE
+                rv$students[sid_d, "Log"] <- if(is.na(rv$students[sid_d, "Log"])){
+                    paste(Sys.time(), "[D]")} else {
+                        paste(rv$students[sid_d, "Log"],Sys.time(), "[D]")
+                    }
+                rv$students[sid_d, "Modified"] <- Sys.time()
+                
+                # Clear search field and refocus
+                updateTextInput(session, "search", value = "")
+                session$sendCustomMessage("selectText", "focus")
+            }
+        } 
     })
     
     # Note event
