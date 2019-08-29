@@ -10,8 +10,8 @@ backup_path <- rstudioapi::selectDirectory()
 ui <- fluidPage(
     
     # Hit enter to accept students
-    # tags$head(includeScript("returnClick.js")),
-    
+    tags$head(includeScript("refocus_search.js")),
+
     # App title ----
     titlePanel(
         h1(textOutput("nme"), align = "center")
@@ -125,15 +125,14 @@ server <- function(input, output, session) {
         # Accept if single student is selected
         if(length(sid_a) == 1){
             rv$students[sid_a, "Accepted"] <- TRUE
-            rv$students[sid_a, "Timestamp"] <- paste(
-                rv$students[sid_a, "Timestamp"],
-                Sys.time(), "[A]"
-            )
+            rv$students[sid_a, "Timestamp"] <- if(is.na(rv$students[sid_a, "Timestamp"])){
+                paste(Sys.time(), "[A]")} else {
+                    paste(rv$students[sid_a, "Timestamp"],Sys.time(), "[A]")
+                }
+            # Clear search field and refocus
+            updateTextInput(session, "search", value = "")
+            session$sendCustomMessage("focus_search", "focus")
         }
-        
-        # Clear search field after accepting
-        updateTextInput(session, "search", value = "")
-
     })
     
     # Decline Event
@@ -147,32 +146,40 @@ server <- function(input, output, session) {
         
         if(length(sid_d) == 1){
             rv$students[sid_d, "Accepted"] <- FALSE
-            rv$students[sid_d, "Timestamp"] <- paste(
-                rv$students[sid_d, "Timestamp"],
-                Sys.time(), "[D]")
+            rv$students[sid_d, "Timestamp"] <- if(is.na(rv$students[sid_d, "Timestamp"])){
+                paste(Sys.time(), "[D]")} else {
+                    paste(rv$students[sid_d, "Timestamp"],Sys.time(), "[D]")
+                }
             
-            # Clear search field after accepting
+            # Clear search field and refocus
             updateTextInput(session, "search", value = "")
+            session$sendCustomMessage("selectText", "focus")
         }
     })
     
     # Note event
     observeEvent(input$note, {
         
-        sid_d <- which(grepl(input$search, 
+        sid_n <- which(grepl(input$search, 
                              rv$students$Matr.Number, 
                              fixed = TRUE) |
                            rv$students$Name == input$search)
         
         # Take Note if single student is selected
-        if(length(sid_d) == 1){
+        if(length(sid_n) == 1){
             
-            rv$students[sid_d, "Note"] <- paste(
-                rv$students[sid_d, "Note"], 
-                input$note_text
-            )
-            # Clear Note field after saving the note
-            updateTextInput(session, "note", value = "")
+            rv$students[sid_n, "Note"] <- if(is.na(rv$students[sid_n, "Note"])){
+                paste(input$note_text)} else{
+                    paste(rv$students[sid_n, "Note"], input$note_text)
+                }
+            rv$students[sid_n, "Timestamp"] <- if(is.na(rv$students[sid_n, "Timestamp"])){
+                paste(Sys.time(), "[D]")} else {
+                    paste(rv$students[sid_n, "Timestamp"],Sys.time(), "[N]")
+                }
+            # Clear search field and refocus
+            updateTextInput(session, "search", value = "")
+            updateTextInput(session, "note_text", value = "")
+            session$sendCustomMessage("selectText", "focus")
         }
     })
     
