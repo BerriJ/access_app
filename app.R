@@ -185,7 +185,7 @@ server <- function(input, output, session) {
                     paste(rv$students[sid_n, "Note"], input$note_text)
                 }
             rv$students[sid_n, "Log"] <- if(is.na(rv$students[sid_n, "Log"])){
-                paste(Sys.time(), "[D]")} else {
+                paste(Sys.time(), "[N]")} else {
                     paste(rv$students[sid_n, "Log"],Sys.time(), "[N]")
                 }
             rv$students[sid_n, "Modified"] <- Sys.time()
