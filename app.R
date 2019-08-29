@@ -116,22 +116,26 @@ server <- function(input, output, session) {
     # Accept Event
     observeEvent(input$accept, {
         
-        # Get Student
         sid_a <- which(str_detect(input$search, 
-                           as.character(rv$students$Matr.Number)) |
-                         rv$students$Name == input$search)
+                                  as.character(rv$students$Matr.Number)) |
+                           rv$students$Name == input$search)
         
-        # Accept if single student is selected
-        if(length(sid_a) == 1){
-            rv$students[sid_a, "Accepted"] <- TRUE
-            rv$students[sid_a, "Log"] <- if(is.na(rv$students[sid_a, "Log"])){
-                paste(Sys.time(), "[A]")} else {
-                    paste(rv$students[sid_a, "Log"],Sys.time(), "[A]")
-                }
-            rv$students[sid_a, "Modified"] <- Sys.time()
-            # Clear search field and refocus
-            updateTextInput(session, "search", value = "")
-            session$sendCustomMessage("focus_search", "focus")
+        if(!as.logical(rv$students[sid_a, "Accepted"])){
+            # Accept if single student is selected
+            if(length(sid_a) == 1){
+                rv$students[sid_a, "Accepted"] <- TRUE
+                rv$students[sid_a, "Log"] <- if(is.na(rv$students[sid_a, "Log"])){
+                    paste(Sys.time(), "[A]")} else {
+                        paste(rv$students[sid_a, "Log"],Sys.time(), "[A]")
+                    }
+                rv$students[sid_a, "Modified"] <- Sys.time()
+                # Clear search field and refocus
+                updateTextInput(session, "search", value = "")
+                session$sendCustomMessage("focus_search", "focus")
+            }
+        }else{
+            sendSweetAlert(session, title = "Already Accepted", 
+                           text = "Can't check in! This student is already market as accepted")
         }
     })
     
