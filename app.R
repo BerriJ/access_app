@@ -160,11 +160,6 @@ server <- function(input, output, session) {
         
     })
     
-    observeEvent(input$goButton,{
-        output$session <- renderText(function(){
-            list.files(choose.dir())})
-    })
-    
     observeEvent(rv$students, {
         # Update the CSV File
         write.csv2(file = "students.csv", x = rv$students, row.names = FALSE)
