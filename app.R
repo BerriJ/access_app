@@ -3,6 +3,9 @@ library(DT)
 library(dplyr)
 library(shinyFiles)
 
+# Ask for backup path from user
+backup_path <- rstudioapi::selectDirectory()
+
 # Define UI for app that draws a histogram ----
 ui <- fluidPage(
     
@@ -69,7 +72,7 @@ ui <- fluidPage(
                 
                 tabPanel("Open", tableOutput("studtable_open")),
                 
-                tabPanel("WNote", tableOutput("studtable_note"))
+                tabPanel("With Note", tableOutput("studtable_note"))
             )
         )
     )
@@ -92,14 +95,15 @@ server <- function(input, output, session) {
     })
     
     output$nme <- renderText({
-        paste(rv$students[rv$students$Matr.Number == input$search, "Name"],
-              rv$students[rv$students$Name == input$search, "Name"])
+        rv$students %>% 
+            dplyr::filter(Matr.Number == input$search | Name == input$search) %>% 
+            dplyr::select(Name) %>% unlist()
     })
     
     output$sum <- renderText({
         paste("Accepted:", sum(rv$students %>%
                                               dplyr::filter(Accepted == TRUE) %>%
-                                              nrow()))
+                                              dplyr::count()))
     })
     
     output$studtable_accept <- renderTable(rv$students %>%
@@ -112,22 +116,19 @@ server <- function(input, output, session) {
                                         dplyr::filter(!is.na(Note)))
     
     # Accept Event
-    
     observeEvent(input$accept, {
         print("accept")
         
         # Accept if Searched by name:
-        rv$students[rv$students$Matr.Number == input$search, "Accepted"] <- TRUE
-        rv$students[rv$students$Name == input$search, "Timestamp"] <- paste(
-            rv$students[rv$students$Name == input$search, "Timestamp"],
-            Sys.time(), "[A]")
-        
-        # Accept if searched by number
-        rv$students[rv$students$Name == input$search, "Accepted"] <- TRUE
-        rv$students[rv$students$Matr.Number == input$search, "Timestamp"] <- paste(
-            rv$students[rv$students$Matr.Number == input$search, "Timestamp"],
-            Sys.time(), "[A]")
-        
+        rv$students[rv$students$Matr.Number == input$search |
+                        rv$students$Name == input$search, "Accepted"] <- TRUE
+        rv$students[rv$students$Matr.Number == input$search |
+                        rv$students$Name == input$search, "Timestamp"] <- 
+            paste(
+            rv$students[rv$students$Matr.Number == input$search |
+                            rv$students$Name == input$search, "Timestamp"],
+            Sys.time(), "[A]"
+            )
         
         # Clear search field after accepting
         updateTextInput(session, "search", value = "")
@@ -139,40 +140,30 @@ server <- function(input, output, session) {
         print("decline")
         
         # Accept if Searched by name:
-        rv$students[rv$students$Matr.Number == input$search, "Accepted"] <- FALSE
-        rv$students[rv$students$Name == input$search, "Timestamp"] <- paste(
-            rv$students[rv$students$Name == input$search, "Timestamp"],
+        rv$students[rv$students$Matr.Number == input$search |
+                        rv$students$Name == input$search, "Accepted"] <- FALSE
+        rv$students[rv$students$Matr.Number == input$search |
+                        rv$students$Name == input$search, "Timestamp"] <- paste(
+            rv$students[rv$students$Matr.Number == input$search |
+                            rv$students$Name == input$search, "Timestamp"],
             Sys.time(), "[D]")
-        
-        # Accept if searched by number
-        rv$students[rv$students$Name == input$search, "Accepted"] <- FALSE
-        rv$students[rv$students$Matr.Number == input$search, "Timestamp"] <- paste(
-            rv$students[rv$students$Matr.Number == input$search, "Timestamp"],
-            Sys.time(), "[D]")
-        
         
         # Clear search field after accepting
         updateTextInput(session, "search", value = "")
         
     })
     
-    # Add a note
+    # Note event
     observeEvent(input$note, {
-        print("note")
-        
-        # Take Note by Name
-        rv$students[rv$students$Name == input$search, "Note"] <- paste(
-            rv$students[rv$students$Name == input$search, "Note"], input$note_text)
-        rv$students[rv$students$Name == input$search, "Timestamp"] <- paste(
-            rv$students[rv$students$Name == input$search, "Timestamp"],
-            Sys.time(), "[N]")
         
         # Take Note by Number
-        rv$students[rv$students$Matr.Number == input$search, "note"] <- paste(
-            rv$students[rv$students$Matr.Number == input$search, "Note"], input$note_text)
-        rv$students[rv$students$Matr.Number == input$search, "Timestamp"] <- paste(
-            rv$students[rv$students$Matr.Number == input$search, "Timestamp"],
-            Sys.time(), "[N]")
+        rv$students[rv$students$Matr.Number == input$search |
+                        rv$students$Name == input$search, "Note"] <- 
+            paste(
+            rv$students[rv$students$Matr.Number == input$search |
+                            rv$students$Name == input$search, "Note"], 
+            input$note_text
+            )
         
         
         # Clear Note field after saving the note
@@ -188,10 +179,12 @@ server <- function(input, output, session) {
     observeEvent(rv$students, {
         # Update the CSV File
         write.csv2(file = "students.csv", x = rv$students, row.names = FALSE)
-        # Save a backup
+        # Save internal Backup
         write.csv2(file = paste("log/students ", format(Sys.time(), "%d%b%Y_%H_%M_%S"), ".csv", sep = ""), x = rv$students, row.names = FALSE)
+        # Save external Backup
+        write.csv2(file = paste(backup_path, format(Sys.time(), "%d%b%Y_%H_%M_%S"), ".csv", sep = ""), x = rv$students, row.names = FALSE)
     })
     
 }
 
-shinyApp(ui = ui, server = server)
+shinyApp(ui = ui, server = server, options = c(port = 1337, launch.browser = "chrome"))
