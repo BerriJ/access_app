@@ -57,10 +57,8 @@ ui <- fluidPage(
                          height: 50px")
                      ),
             
-            fluidRow(align = "center",
-                     shinyDirButton("savedir", "Save folder", "Save folder")),
-            
-            h3(textOutput("sum"))
+            h3(textOutput("sum")),
+            htmlOutput("backup")
             
         ),
         
@@ -84,16 +82,6 @@ server <- function(input, output, session) {
     rv <- reactiveValues(students = read.csv2("students.csv", 
                                               stringsAsFactors = FALSE))
     
-    shinyDirChoose(input, "savedir",
-                   roots = getVolumes(),
-                   defaultRoot = "main",
-                   session=session)
-    
-    observeEvent(input$savedir, {
-        dirinfo <- parseDirPath(getVolumes(), input$savedir)
-        print(dirinfo)
-    })
-    
     output$nme <- renderText({
         rv$students %>% 
             dplyr::filter(Matr.Number == input$search | Name == input$search) %>% 
@@ -104,6 +92,10 @@ server <- function(input, output, session) {
         paste("Accepted:", sum(rv$students %>%
                                               dplyr::filter(Accepted == TRUE) %>%
                                               dplyr::count()))
+    })
+    
+    output$backup <- renderUI({
+        HTML(paste("Saving Backup to:<br/>", backup_path, "/", sep= ""))
     })
     
     output$studtable_accept <- renderTable(rv$students %>%
@@ -117,16 +109,15 @@ server <- function(input, output, session) {
     
     # Accept Event
     observeEvent(input$accept, {
-        print("accept")
         
         # Accept if Searched by name:
-        rv$students[rv$students$Matr.Number == input$search |
-                        rv$students$Name == input$search, "Accepted"] <- TRUE
-        rv$students[rv$students$Matr.Number == input$search |
-                        rv$students$Name == input$search, "Timestamp"] <- 
-            paste(
-            rv$students[rv$students$Matr.Number == input$search |
-                            rv$students$Name == input$search, "Timestamp"],
+        
+        sid_a <- which(rv$students$Matr.Number == input$search |
+                  rv$students$Name == input$search)
+        
+        rv$students[sid_a, "Accepted"] <- TRUE
+        rv$students[sid_a, "Timestamp"] <- paste(
+            rv$students[sid_a, "Timestamp"],
             Sys.time(), "[A]"
             )
         
@@ -137,15 +128,14 @@ server <- function(input, output, session) {
     
     # Decline Event
     observeEvent(input$decline, {
-        print("decline")
+        
+        sid_d <- which(rv$students$Matr.Number == input$search |
+                           rv$students$Name == input$search)
         
         # Accept if Searched by name:
-        rv$students[rv$students$Matr.Number == input$search |
-                        rv$students$Name == input$search, "Accepted"] <- FALSE
-        rv$students[rv$students$Matr.Number == input$search |
-                        rv$students$Name == input$search, "Timestamp"] <- paste(
-            rv$students[rv$students$Matr.Number == input$search |
-                            rv$students$Name == input$search, "Timestamp"],
+        rv$students[sid_d, "Accepted"] <- FALSE
+        rv$students[sid_d, "Timestamp"] <- paste(
+            rv$students[sid_d, "Timestamp"],
             Sys.time(), "[D]")
         
         # Clear search field after accepting
@@ -156,15 +146,14 @@ server <- function(input, output, session) {
     # Note event
     observeEvent(input$note, {
         
+        sid_n <- which(rv$students$Matr.Number == input$search |
+                           rv$students$Name == input$search)
+        
         # Take Note by Number
-        rv$students[rv$students$Matr.Number == input$search |
-                        rv$students$Name == input$search, "Note"] <- 
-            paste(
-            rv$students[rv$students$Matr.Number == input$search |
-                            rv$students$Name == input$search, "Note"], 
+        rv$students[sid_n, "Note"] <- paste(
+            rv$students[sid_n, "Note"], 
             input$note_text
             )
-        
         
         # Clear Note field after saving the note
         updateTextInput(session, "note", value = "")
@@ -182,7 +171,7 @@ server <- function(input, output, session) {
         # Save internal Backup
         write.csv2(file = paste("log/students ", format(Sys.time(), "%d%b%Y_%H_%M_%S"), ".csv", sep = ""), x = rv$students, row.names = FALSE)
         # Save external Backup
-        write.csv2(file = paste(backup_path, format(Sys.time(), "%d%b%Y_%H_%M_%S"), ".csv", sep = ""), x = rv$students, row.names = FALSE)
+        write.csv2(file = paste(backup_path, "/", format(Sys.time(), "%d%b%Y_%H_%M_%S"), ".csv", sep = ""), x = rv$students, row.names = FALSE)
     })
     
 }
