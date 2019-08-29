@@ -83,9 +83,15 @@ server <- function(input, output, session) {
                                               stringsAsFactors = FALSE))
     
     output$nme <- renderText({
-        rv$students %>% 
-            dplyr::filter(Matr.Number == input$search | Name == input$search) %>% 
-            dplyr::select(Name) %>% unlist()
+        if(input$search != ""){
+            rv$students %>% 
+                dplyr::filter(
+                    grepl(input$search, 
+                          rv$students$Matr.Number, 
+                          fixed = TRUE) | 
+                        Name == input$search) %>% 
+                dplyr::select(Name) %>% unlist() 
+        }
     })
     
     output$sum <- renderText({
@@ -110,16 +116,20 @@ server <- function(input, output, session) {
     # Accept Event
     observeEvent(input$accept, {
         
-        # Accept if Searched by name:
+        # Get Student
+        sid_a <- which(grepl(input$search, 
+                           rv$students$Matr.Number, 
+                           fixed = TRUE) |
+                         rv$students$Name == input$search)
         
-        sid_a <- which(rv$students$Matr.Number == input$search |
-                  rv$students$Name == input$search)
-        
-        rv$students[sid_a, "Accepted"] <- TRUE
-        rv$students[sid_a, "Timestamp"] <- paste(
-            rv$students[sid_a, "Timestamp"],
-            Sys.time(), "[A]"
+        # Accept if single student is selected
+        if(length(sid_a) == 1){
+            rv$students[sid_a, "Accepted"] <- TRUE
+            rv$students[sid_a, "Timestamp"] <- paste(
+                rv$students[sid_a, "Timestamp"],
+                Sys.time(), "[A]"
             )
+        }
         
         # Clear search field after accepting
         updateTextInput(session, "search", value = "")
@@ -129,35 +139,41 @@ server <- function(input, output, session) {
     # Decline Event
     observeEvent(input$decline, {
         
-        sid_d <- which(rv$students$Matr.Number == input$search |
+        # Get Student
+        sid_d <- which(grepl(input$search, 
+                             rv$students$Matr.Number, 
+                             fixed = TRUE) |
                            rv$students$Name == input$search)
         
-        # Accept if Searched by name:
-        rv$students[sid_d, "Accepted"] <- FALSE
-        rv$students[sid_d, "Timestamp"] <- paste(
-            rv$students[sid_d, "Timestamp"],
-            Sys.time(), "[D]")
-        
-        # Clear search field after accepting
-        updateTextInput(session, "search", value = "")
-        
+        if(length(sid_d) == 1){
+            rv$students[sid_d, "Accepted"] <- FALSE
+            rv$students[sid_d, "Timestamp"] <- paste(
+                rv$students[sid_d, "Timestamp"],
+                Sys.time(), "[D]")
+            
+            # Clear search field after accepting
+            updateTextInput(session, "search", value = "")
+        }
     })
     
     # Note event
     observeEvent(input$note, {
         
-        sid_n <- which(rv$students$Matr.Number == input$search |
+        sid_d <- which(grepl(input$search, 
+                             rv$students$Matr.Number, 
+                             fixed = TRUE) |
                            rv$students$Name == input$search)
         
-        # Take Note by Number
-        rv$students[sid_n, "Note"] <- paste(
-            rv$students[sid_n, "Note"], 
-            input$note_text
+        # Take Note if single student is selected
+        if(length(sid_d) == 1){
+            
+            rv$students[sid_d, "Note"] <- paste(
+                rv$students[sid_d, "Note"], 
+                input$note_text
             )
-        
-        # Clear Note field after saving the note
-        updateTextInput(session, "note", value = "")
-        
+            # Clear Note field after saving the note
+            updateTextInput(session, "note", value = "")
+        }
     })
     
     observeEvent(rv$students, {
