@@ -105,7 +105,8 @@ server <- function(input, output, session) {
     })
     
     output$studtable_accept <- renderTable(rv$students %>%
-                                        dplyr::filter(Accepted == TRUE))
+                                        dplyr::filter(Accepted == TRUE) %>%
+                                            arrange(desc(Modified)))
     
     output$studtable_open <- renderTable(rv$students %>%
                                              dplyr::filter(Accepted == FALSE))
@@ -129,6 +130,7 @@ server <- function(input, output, session) {
                 paste(Sys.time(), "[A]")} else {
                     paste(rv$students[sid_a, "Log"],Sys.time(), "[A]")
                 }
+            rv$students[sid_a, "Modified"] <- Sys.time()
             # Clear search field and refocus
             updateTextInput(session, "search", value = "")
             session$sendCustomMessage("focus_search", "focus")
@@ -150,6 +152,7 @@ server <- function(input, output, session) {
                 paste(Sys.time(), "[D]")} else {
                     paste(rv$students[sid_d, "Log"],Sys.time(), "[D]")
                 }
+            rv$students[sid_d, "Modified"] <- Sys.time()
             
             # Clear search field and refocus
             updateTextInput(session, "search", value = "")
@@ -176,6 +179,7 @@ server <- function(input, output, session) {
                 paste(Sys.time(), "[D]")} else {
                     paste(rv$students[sid_n, "Log"],Sys.time(), "[N]")
                 }
+            rv$students[sid_n, "Modified"] <- Sys.time()
             # Clear search field and refocus
             updateTextInput(session, "search", value = "")
             updateTextInput(session, "note_text", value = "")
