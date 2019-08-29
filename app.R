@@ -125,9 +125,9 @@ server <- function(input, output, session) {
         # Accept if single student is selected
         if(length(sid_a) == 1){
             rv$students[sid_a, "Accepted"] <- TRUE
-            rv$students[sid_a, "Timestamp"] <- if(is.na(rv$students[sid_a, "Timestamp"])){
+            rv$students[sid_a, "Log"] <- if(is.na(rv$students[sid_a, "Log"])){
                 paste(Sys.time(), "[A]")} else {
-                    paste(rv$students[sid_a, "Timestamp"],Sys.time(), "[A]")
+                    paste(rv$students[sid_a, "Log"],Sys.time(), "[A]")
                 }
             # Clear search field and refocus
             updateTextInput(session, "search", value = "")
@@ -146,9 +146,9 @@ server <- function(input, output, session) {
         
         if(length(sid_d) == 1){
             rv$students[sid_d, "Accepted"] <- FALSE
-            rv$students[sid_d, "Timestamp"] <- if(is.na(rv$students[sid_d, "Timestamp"])){
+            rv$students[sid_d, "Log"] <- if(is.na(rv$students[sid_d, "Log"])){
                 paste(Sys.time(), "[D]")} else {
-                    paste(rv$students[sid_d, "Timestamp"],Sys.time(), "[D]")
+                    paste(rv$students[sid_d, "Log"],Sys.time(), "[D]")
                 }
             
             # Clear search field and refocus
@@ -172,9 +172,9 @@ server <- function(input, output, session) {
                 paste(input$note_text)} else{
                     paste(rv$students[sid_n, "Note"], input$note_text)
                 }
-            rv$students[sid_n, "Timestamp"] <- if(is.na(rv$students[sid_n, "Timestamp"])){
+            rv$students[sid_n, "Log"] <- if(is.na(rv$students[sid_n, "Log"])){
                 paste(Sys.time(), "[D]")} else {
-                    paste(rv$students[sid_n, "Timestamp"],Sys.time(), "[N]")
+                    paste(rv$students[sid_n, "Log"],Sys.time(), "[N]")
                 }
             # Clear search field and refocus
             updateTextInput(session, "search", value = "")
