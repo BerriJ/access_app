@@ -1,7 +1,7 @@
 library(shiny)
 library(DT)
 library(dplyr)
-library(shinyFiles)
+library(stringr)
 
 # Ask for backup path from user
 backup_path <- rstudioapi::selectDirectory()
@@ -185,9 +185,9 @@ server <- function(input, output, session) {
         # Update the CSV File
         write.csv2(file = "students.csv", x = rv$students, row.names = FALSE)
         # Save internal Backup
-        write.csv2(file = paste("log/students ", format(Sys.time(), "%d%b%Y_%H_%M_%S"), ".csv", sep = ""), x = rv$students, row.names = FALSE)
+        write.csv2(file = paste("log/students ", format(Sys.time(), "%Y_%m_%d_%H_%M_%S"), ".csv", sep = ""), x = rv$students, row.names = FALSE)
         # Save external Backup
-        write.csv2(file = paste(backup_path, "/", format(Sys.time(), "%d%b%Y_%H_%M_%S"), ".csv", sep = ""), x = rv$students, row.names = FALSE)
+        write.csv2(file = paste(backup_path, "/", format(Sys.time(), "%Y_%m_%d_%H_%M_%S"), ".csv", sep = ""), x = rv$students, row.names = FALSE)
     })
     
 }
