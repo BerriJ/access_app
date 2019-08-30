@@ -26,7 +26,16 @@ ui <- fluidPage(
         sidebarPanel(
             
             fluidRow(align = "center",
-                     textInput("search", label = h3("Search by Name or Number"), value = "")
+                     # textInput("search", label = h3("Search by Name or Number"), value = "")
+                     
+                     searchInput(
+                         inputId = "search", 
+                         label = h3("Search by Name or Number"), 
+                         placeholder = "Press Enter to search.", 
+                         btnSearch = icon("search"), 
+                         btnReset = icon("remove"), 
+                         width = "100%"
+                     )
             ),
             
             fluidRow(align = "center",
@@ -46,17 +55,15 @@ ui <- fluidPage(
                          height: 50px")),
             
             fluidRow(align = "center",
-                     textInput("note_text", label = h3("Add a Note"), value = "")
-            ),
-            
-            fluidRow(align = "center",
-                     
-                     actionButton("note",
-                                  "Note",
-                                  style = "color: black;
-                         background-color: #e06500;
-                         width: 100px;
-                         height: 50px")
+
+                     searchInput(
+                         inputId = "note", 
+                         label = h3("Add a Note"), 
+                         placeholder = "Press Enter to save.", 
+                         btnSearch = icon("save"), 
+                         btnReset = icon("remove"), 
+                         width = "100%"
+                     )
             ),
             
             h3(textOutput("sum")),
@@ -128,7 +135,7 @@ server <- function(input, output, session) {
                 rv$students[sid_a, "Log"] <- paste(na.omit(c(rv$students[sid_a, "Log"],Sys.time(), "[A]")), collapse = " ")
                 rv$students[sid_a, "Modified"] <- Sys.time()
                 # Clear search field and refocus
-                updateTextInput(session, "search", value = "")
+                updateSearchInput(session, "search", value = "", trigger = TRUE)
                 session$sendCustomMessage("focus_search", "focus")
             } else {
                 sendSweetAlert(session, title = "Already Accepted", 
@@ -179,7 +186,7 @@ server <- function(input, output, session) {
                 rv$students[sid_d, "Modified"] <- Sys.time()
                 
                 # Clear search field and refocus
-                updateTextInput(session, "search", value = "")
+                updateSearchInput(session, "search", value = "", trigger = TRUE)
                 session$sendCustomMessage("selectText", "focus")
         } 
     })
@@ -194,13 +201,13 @@ server <- function(input, output, session) {
         # Take Note if single student is selected
         if(length(sid_n) == 1){
             
-            rv$students[sid_n, "Note"] <- paste(na.omit(c(rv$students[sid_n, "Note"], input$note_text)), collapse = " ")
+            rv$students[sid_n, "Note"] <- paste(na.omit(c(rv$students[sid_n, "Note"], input$note)), collapse = " ")
             rv$students[sid_n, "Log"] <- paste(na.omit(c(rv$students[sid_n, "Log"],Sys.time(), "[N]")), collapse = " ")
             rv$students[sid_n, "Modified"] <- Sys.time()
             # Clear search field and refocus
-            updateTextInput(session, "search", value = "")
-            updateTextInput(session, "note_text", value = "")
-            session$sendCustomMessage("selectText", "focus")
+            updateSearchInput(session, "search", value = "", trigger = TRUE)
+            updateSearchInput(session, "note", value = "", trigger = FALSE)
+            session$sendCustomMessage("focus_search", "focus")
         } else {
             sendSweetAlert(session, title = "Selection", 
                            text = "Please select one student.")

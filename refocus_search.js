@@ -1,3 +1,3 @@
 Shiny.addCustomMessageHandler('focus_search', function(message) {
-        $('#search').focus();
+        $('#search_text').focus();
       });
