@@ -1,0 +1,34 @@
+footer {
+  position: absolute;
+  bottom:3px;
+  left:20%;
+  padding:5px;
+  color: #8c8c8c;
+}
+
+body {
+  background: #e9e9e9;
+  font-family: "Roboto", sans-serif;
+  text-align: center;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+span .fa {
+  color: #00a65a;
+  margin: 0 3px;
+  font-size: 10px;
+  animation: pound 0.35s infinite alternate;
+  -webkit-animation: pound 0.35s infinite alternate;
+}
+
+@-webkit-keyframes pound {
+  to {
+    transform: scale(1.1);
+  }
+}
+@keyframes pound {
+  to {
+    transform: scale(1.1);
+  }
+}

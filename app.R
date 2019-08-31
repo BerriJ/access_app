@@ -22,7 +22,7 @@ ui <- dashboardPage(skin = "green",
   dashboardHeader(title = "Students ID Check", disable = FALSE),
   
   dashboardSidebar(width = 300,
-    
+                   
     fluidRow(align = "center",
              # textInput("search", label = h3("Search by Name or Number"), value = "")
              
@@ -33,9 +33,9 @@ ui <- dashboardPage(skin = "green",
                btnSearch = icon("search"), 
                btnReset = icon("remove"), 
                width = "95%"
-             )
+             ) 
     ),
-    
+     
     fluidRow(#align = "center",
              
              column(6,
@@ -57,7 +57,6 @@ ui <- dashboardPage(skin = "green",
                          font-size: 30px",
                                  icon = icon("user-check")))),
     fluidRow(align = "center",
-             
              searchInput(
                inputId = "note", 
                label = h3("Add a Note"), 
@@ -67,16 +66,19 @@ ui <- dashboardPage(skin = "green",
                btnReset = icon("remove"), 
                width = "95%"
              )),
-    fluidRow(align = "center",style = "padding-top:80px",
+    fluidRow(align = "center",style = "position:fixed, bottom:0",
              column(10, offset = 1,valueBoxOutput("progressBox", width = NULL))),
-    htmlOutput("backup")
+    htmlOutput("backup"),
     
+    includeCSS("www/footer.css"), 
+    includeHTML("www/footer.html")
+
   ),
   dashboardBody(
       
-      # Refocus search bar after action
-      tags$head(includeScript("refocus_search.js")),
-    
+     # Refocus search bar after action
+     tags$head(includeScript("www/refocus_search.js")),
+     includeHTML("www/github.html"),
     box(
       title = "Seach Result", solidHeader = TRUE,
       collapsible = FALSE, width = NULL,
@@ -84,7 +86,7 @@ ui <- dashboardPage(skin = "green",
     ),
     
     tabBox(
-      width = NULL,
+      width = NULL, title = "Overview",side = "right",
       selected = "Checked In",
       tabPanel("Checked In", DT::dataTableOutput("studtable_accept")),
       
