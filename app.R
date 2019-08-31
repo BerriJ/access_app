@@ -5,7 +5,6 @@ library(dplyr)
 library(stringr)
 library(shinyWidgets)
 
-
 # Ask for backup path from user
 rstudioapi::showDialog("Backup Path", message = "The next step asks you to select
                        a folder for backups. Consider using an external Device
@@ -36,25 +35,26 @@ ui <- dashboardPage(
              )
     ),
     
-    fluidRow(align = "center",
+    fluidRow(#align = "center",
              
-             column(5,
-                    actionBttn("accept",
-                               color = "success",
-                               style = "simple",
-                               size = "lg",
-                               block = T,
-                               icon = icon("user-check"))),
-             column(5,offset = 1,
-                    actionBttn("decline",
-                               style = "simple",
-                               color = "danger",
-                               size = "lg",
-                               block = T,
-                               icon = icon("user-times")))),
-    
-    
-    
+             column(6,
+                    actionButton("decline",
+                                 "",
+                                 style = "color: rgba(0, 0, 0, 0.5);
+                         background-color: #dd4b39;
+                         width: 100px;
+                         height: 60px;
+                                 font-size: 30px",
+                                 icon = icon("user-times"))),
+             column(6,
+                    actionButton("accept",
+                                 "",
+                                 style = "color: rgba(0, 0, 0, 0.5);
+                         background-color: #00a65a;
+                         width: 100px;
+                         height: 60px;
+                         font-size: 30px",
+                                 icon = icon("user-check")))),
     fluidRow(align = "center",
              
              searchInput(
