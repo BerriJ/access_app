@@ -6,7 +6,16 @@ library(shinyWidgets)
 
 
 # Ask for backup path from user
-backup_path <- rstudioapi::selectDirectory()
+rstudioapi::showDialog("Backup Path", message = "The next step asks you to select
+                       a folder for backups. Consider using an external Device
+                       for this. A backup is created for every change and named
+                       by date and time.")
+backup_path <- rstudioapi::selectDirectory(caption = "Backup Folder")
+
+while(is.null(backup_path)){
+    rstudioapi::showDialog("Backup Path", message = "Seriously: select a backup folder!")
+    backup_path <- rstudioapi::selectDirectory(caption = "Backup Folder")
+}
 
 # Define UI for app that draws a histogram ----
 ui <- fluidPage(
@@ -15,6 +24,7 @@ ui <- fluidPage(
     tags$head(includeScript("refocus_search.js")),
     
     # App title ----
+    
     titlePanel(
         h1(textOutput("nme"), align = "center")
     ),
@@ -40,25 +50,27 @@ ui <- fluidPage(
             
             fluidRow(align = "center",
                      
-                     actionButton("accept",
+                     column(6,
+                     actionBttn("accept",
                                   "Check In",
-                                  style = "color: black;
-                         background-color: #209400;
-                         width: 100px;
-                         height: 50px"),
-                     
-                     actionButton("decline",
+                                  color = "success",
+                                  style = "simple",
+                                size = "md")),
+                     column(6,
+                     actionBttn("decline",
                                   "Check Out",
-                                  style = "color: black;
-                         background-color: #940000;
-                         width: 100px;
-                         height: 50px")),
+                                  style = "simple",
+                                  color = "danger",
+                                size = "md"))),
+            
+            
             
             fluidRow(align = "center",
 
                      searchInput(
                          inputId = "note", 
                          label = h3("Add a Note"), 
+                         value = NULL,
                          placeholder = "Press Enter to save.", 
                          btnSearch = icon("save"), 
                          btnReset = icon("remove"), 
@@ -169,8 +181,8 @@ server <- function(input, output, session) {
             }
             
         } else {
-            sendSweetAlert(session, title = "Selection", 
-                           text = "Please select one student.")
+            #sendSweetAlert(session, title = "Selection", 
+            #               text = "Please select one student.")
         }
     })
     
@@ -194,6 +206,7 @@ server <- function(input, output, session) {
     # Note event
     observeEvent(input$note, {
         
+        print(input$note)
         sid_n <- which(str_detect(input$search, 
                                   as.character(rv$students$Matr.Number)) |
                            rv$students$Name == input$search)
@@ -209,8 +222,10 @@ server <- function(input, output, session) {
             updateSearchInput(session, "note", value = "", trigger = FALSE)
             session$sendCustomMessage("focus_search", "focus")
         } else {
-            sendSweetAlert(session, title = "Selection", 
-                           text = "Please select one student.")
+            if(input$note != ""){
+                sendSweetAlert(session, title = "Selection", 
+                               text = "Please select one student.")   
+            }
         }
     })
     
