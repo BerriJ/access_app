@@ -36,8 +36,7 @@ ui <- dashboardPage(skin = "green",
              ) 
     ),
      
-    fluidRow(#align = "center",
-             
+    fluidRow(
              column(6,
                     actionButton("decline",
                                  "",
@@ -45,6 +44,7 @@ ui <- dashboardPage(skin = "green",
                          background-color: #dd4b39;
                          width: 100px;
                          height: 60px;
+                         border-color:#dd4b39;
                                  font-size: 30px",
                                  icon = icon("user-times"))),
              column(6,
@@ -54,6 +54,7 @@ ui <- dashboardPage(skin = "green",
                          background-color: #00a65a;
                          width: 100px;
                          height: 60px;
+                         border-color:#00a65a;
                          font-size: 30px",
                                  icon = icon("user-check")))),
     fluidRow(align = "center",
@@ -85,8 +86,8 @@ ui <- dashboardPage(skin = "green",
      # Refocus search bar after action
      tags$head(includeScript("www/refocus_search.js")),
      includeHTML("www/github.html"),
-    box(
-      title = "Seach Result", solidHeader = TRUE,
+     
+    box(title = "Search Result:",
       collapsible = FALSE, width = NULL,
       h2(textOutput("nme"), align = "center")
     ),
@@ -144,10 +145,12 @@ server <- function(input, output, session) {
                                                    arrange(desc(Modified)))
   
   output$studtable_open <- DT::renderDataTable(rv$students %>%
-                                                 dplyr::filter(Accepted == FALSE))
+                                                 dplyr::filter(Accepted == FALSE) %>% 
+                                                   dplyr::arrange(desc(Modified), Name))
   
   output$studtable_note <- DT::renderDataTable(rv$students %>%
-                                                 dplyr::filter(!is.na(Note)))
+                                                 dplyr::filter(!is.na(Note)) %>%
+                                                   arrange(desc(Modified)))
   
   # Accept Event
   observeEvent(input$accept, {
