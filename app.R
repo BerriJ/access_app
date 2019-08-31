@@ -17,9 +17,10 @@ while(is.null(backup_path)){
   backup_path <- rstudioapi::selectDirectory(caption = "Backup Folder")
 }
 
-
-ui <- dashboardPage(
-  dashboardHeader(title = "Students ID Check"),
+ui <- dashboardPage(skin = "green",
+    
+  dashboardHeader(title = "Students ID Check", disable = FALSE),
+  
   dashboardSidebar(width = 300,
     
     fluidRow(align = "center",
@@ -66,12 +67,15 @@ ui <- dashboardPage(
                btnReset = icon("remove"), 
                width = "95%"
              )),
-    fluidRow(align = "center",style = "padding-top:100px",
+    fluidRow(align = "center",style = "padding-top:80px",
              column(10, offset = 1,valueBoxOutput("progressBox", width = NULL))),
     htmlOutput("backup")
     
   ),
   dashboardBody(
+      
+      # Refocus search bar after action
+      tags$head(includeScript("refocus_search.js")),
     
     box(
       title = "Seach Result", solidHeader = TRUE,
@@ -140,7 +144,7 @@ server <- function(input, output, session) {
       
       if(!as.logical(rv$students[sid_a, "Accepted"])){
         rv$students[sid_a, "Accepted"] <- TRUE
-        rv$students[sid_a, "Log"] <- paste(na.omit(c(rv$students[sid_a, "Log"],Sys.time(), "[A]")), collapse = " ")
+        rv$students[sid_a, "Log"] <- paste(na.omit(c(rv$students[sid_a, "Log"],as.character(Sys.time()), "[A]")), collapse = " ")
         rv$students[sid_a, "Modified"] <- Sys.time()
         # Clear search field and refocus
         updateSearchInput(session, "search", value = "", trigger = TRUE)
@@ -190,12 +194,12 @@ server <- function(input, output, session) {
                        rv$students$Name == input$search)
       
       rv$students[sid_d, "Accepted"] <- FALSE
-      rv$students[sid_d, "Log"] <- paste(na.omit(c(rv$students[sid_d, "Log"],Sys.time(), "[D]")), collapse = " ")
+      rv$students[sid_d, "Log"] <- paste(na.omit(c(rv$students[sid_d, "Log"], as.character(Sys.time()), "[D]")), collapse = " ")
       rv$students[sid_d, "Modified"] <- Sys.time()
       
       # Clear search field and refocus
       updateSearchInput(session, "search", value = "", trigger = TRUE)
-      session$sendCustomMessage("selectText", "focus")
+      session$sendCustomMessage("focus_search", "focus")
     } 
   })
   
@@ -211,7 +215,7 @@ server <- function(input, output, session) {
     if(length(sid_n) == 1){
       
       rv$students[sid_n, "Note"] <- paste(na.omit(c(rv$students[sid_n, "Note"], input$note)), collapse = " ")
-      rv$students[sid_n, "Log"] <- paste(na.omit(c(rv$students[sid_n, "Log"],Sys.time(), "[N]")), collapse = " ")
+      rv$students[sid_n, "Log"] <- paste(na.omit(c(rv$students[sid_n, "Log"],as.character(Sys.time()), "[N]")), collapse = " ")
       rv$students[sid_n, "Modified"] <- Sys.time()
       # Clear search field and refocus
       updateSearchInput(session, "search", value = "", trigger = TRUE)
