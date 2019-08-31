@@ -66,8 +66,14 @@ ui <- dashboardPage(skin = "green",
                btnReset = icon("remove"), 
                width = "95%"
              )),
-    fluidRow(align = "center",style = "position:fixed, bottom:0",
+    # Add info box for sum of accepted students
+    fluidRow(align = "center",
              column(10, offset = 1,valueBoxOutput("progressBox", width = NULL))),
+    
+    # Add info box for sum of students with a note
+    fluidRow(align = "center",style = "position:fixed, bottom:0",
+             column(10, offset = 1,valueBoxOutput("progressBox2", width = NULL))),
+    
     htmlOutput("backup"),
     
     includeCSS("www/footer.css"), 
@@ -118,6 +124,15 @@ server <- function(input, output, session) {
                    dplyr::count())), "students checked in.", icon = icon("user-check"),
       color = "green"
     )
+  })
+  
+  output$progressBox2 <- renderValueBox({
+      valueBox(
+          paste0(sum(rv$students %>%
+                         dplyr::filter(!is.na(Note)) %>%
+                         dplyr::count())), "students with note.", icon = icon("clipboard"),
+          color = "yellow"
+      )
   })
   
   output$backup <- renderUI({
