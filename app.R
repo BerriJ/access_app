@@ -17,28 +17,25 @@ while(is.null(backup_path)){
   backup_path <- rstudioapi::selectDirectory(caption = "Backup Folder")
 }
 
+################################################################################
+###################################  UI  #######################################
+################################################################################
+
 ui <- dashboardPage(skin = "green",
     
   dashboardHeader(title = "Students ID Check", disable = FALSE),
   
   dashboardSidebar(width = 300,
                    
-    fluidRow(align = "center",
-             # textInput("search", label = h3("Search by Name or Number"), value = "")
-             
+    fluidRow(align = "center", # Row for search text input
              searchInput(
                inputId = "search", 
                label = h3("Search by Name or Number"), 
                placeholder = "Press Enter to search.", 
                btnSearch = icon("search"), 
                btnReset = icon("remove"), 
-               width = "95%"
-             ) 
-    ),
-     
-    fluidRow(
-             column(6,
-                    actionButton("decline",
+               width = "95%")),
+    fluidRow(column(6, actionButton("decline", # Row for accept decline buttons
                                  "",
                                  style = "color: rgba(0, 0, 0, 0.5);
                          background-color: #dd4b39;
@@ -47,9 +44,7 @@ ui <- dashboardPage(skin = "green",
                          border-color:#dd4b39;
                                  font-size: 30px",
                                  icon = icon("user-times"))),
-             column(6,
-                    actionButton("accept",
-                                 "",
+             column(6, actionButton("accept", "",
                                  style = "color: rgba(0, 0, 0, 0.5);
                          background-color: #00a65a;
                          width: 100px;
@@ -57,7 +52,7 @@ ui <- dashboardPage(skin = "green",
                          border-color:#00a65a;
                          font-size: 30px",
                                  icon = icon("user-check")))),
-    fluidRow(align = "center",
+    fluidRow(align = "center", # Row for note text input
              searchInput(
                inputId = "note", 
                label = h3("Add a Note"), 
@@ -65,97 +60,77 @@ ui <- dashboardPage(skin = "green",
                placeholder = "Press Enter to save.", 
                btnSearch = icon("save"), 
                btnReset = icon("remove"), 
-               width = "95%"
-             )),
-    # Add info box for sum of accepted students
+               width = "95%")),
+    # Info box for sum of accepted students
     fluidRow(align = "center",
              column(10, offset = 1,valueBoxOutput("progressBox", width = NULL))),
     
-    # Add info box for sum of students with a note
+    # Info box for sum of students with a note
     fluidRow(align = "center",style = "position:fixed, bottom:0",
              column(10, offset = 1,valueBoxOutput("progressBox2", width = NULL))),
-    
+    # Backup path
     htmlOutput("backup"),
+    # Include footer
+    includeCSS("www/footer.css"), includeHTML("www/footer.html")),
+  
+  dashboardBody( # Main Panel
     
-    includeCSS("www/footer.css"), 
-    includeHTML("www/footer.html")
-
-  ),
-  dashboardBody(
-      
      # Refocus search bar after action
      tags$head(includeScript("www/refocus_search.js")),
+     # Include Github corner
      includeHTML("www/github.html"),
-     
+    # Box with search result: 
     box(title = "Search Result:",
       collapsible = FALSE, width = NULL,
       h2(textOutput("nme"), align = "center")
     ),
-    
+    # Box with various tabs that show subsets of students dataframe
     tabBox(
-      width = NULL, title = "Overview",side = "right",
-      selected = "Checked In",
+      width = NULL, title = "Overview",side = "right", selected = "Checked In",
       tabPanel("Checked In", DT::dataTableOutput("studtable_accept")),
-      
       tabPanel("Open", DT::dataTableOutput("studtable_open")),
-      
       tabPanel("With Note", DT::dataTableOutput("studtable_note"))
     )
   )
 )
 
+################################################################################
+#################################  Server  #####################################
+################################################################################
+
 server <- function(input, output, session) {
-  
-  # rv <- reactiveValues(students = read.csv2("students.csv", 
-  #                                           stringsAsFactors = FALSE))
-  
+  # rv will store reactive values like students dataframe
   rv <- reactiveValues()
-  
   observe({
+    # read students.csv and assign to rv every 100 ms if csv has changed
     studentsorig <- reactiveFileReader(100, session = session, filePath = "students.csv", readFunc = read.csv2, stringsAsFactors = FALSE)
     rv$students <- studentsorig()
     print(session$clientData$url_hostname)
   })
   
-  output$nme <- renderText({
-    rv$students %>% 
-      dplyr::filter(
-        str_detect(input$search, 
-                   as.character(rv$students$Matr.Number)) | 
-          Name == input$search) %>% 
-      dplyr::select(Name) %>% unlist()
-  })
+  output$nme <- renderText({rv$students %>% dplyr::filter(
+    str_detect(input$search, as.character(rv$students$Matr.Number)) | 
+          Name == input$search) %>% dplyr::select(Name) %>% unlist()})
   
   output$progressBox <- renderValueBox({
-    valueBox(
-      paste0(sum(rv$students %>%
-                   dplyr::filter(Accepted == TRUE) %>%
-                   dplyr::count())), "students checked in.", icon = icon("user-check"),
-      color = "green"
-    )
-  })
+    valueBox(paste0(sum(rv$students %>% dplyr::filter(Accepted == TRUE) %>%
+                          dplyr::count())), "students checked in.", 
+             icon = icon("user-check"), color = "green")})
   
-  output$progressBox2 <- renderValueBox({
-      valueBox(
-          paste0(sum(rv$students %>%
-                         dplyr::filter(!is.na(Note)) %>%
-                         dplyr::count())), "students with note.", icon = icon("clipboard"),
-          color = "yellow"
-      )
-  })
+  output$progressBox2 <- renderValueBox({valueBox(paste0(sum(rv$students %>%
+                         dplyr::filter(!is.na(Note)) %>% 
+                           dplyr::count())), "students with note.", 
+                         icon = icon("clipboard"), color = "yellow")})
   
   output$backup <- renderUI({
-    HTML(paste("Saving Backup to:<br/>", backup_path, "/", sep= ""))
-  })
+    HTML(paste("Saving Backup to:<br/>", backup_path, "/", sep= ""))})
   
   output$studtable_accept <- DT::renderDataTable(rv$students %>%
                                                    dplyr::filter(Accepted == TRUE) %>%
                                                    arrange(desc(Modified)))
-  
   output$studtable_open <- DT::renderDataTable(rv$students %>%
                                                  dplyr::filter(Accepted == FALSE) %>% 
                                                    dplyr::arrange(desc(Modified), Name))
-  
   output$studtable_note <- DT::renderDataTable(rv$students %>%
                                                  dplyr::filter(!is.na(Note)) %>%
                                                    arrange(desc(Modified)))
@@ -171,6 +146,7 @@ server <- function(input, output, session) {
     if(length(sid_a) == 1){
       
       if(!as.logical(rv$students[sid_a, "Accepted"])){
+        # Accept the student
         rv$students[sid_a, "Accepted"] <- TRUE
         rv$students[sid_a, "Log"] <- paste(na.omit(c(rv$students[sid_a, "Log"],as.character(Sys.time()), "[A]")), collapse = " ")
         rv$students[sid_a, "Modified"] <- Sys.time()
@@ -217,13 +193,7 @@ server <- function(input, output, session) {
       } else {
         sendSweetAlert(session, title = "Can't Check Out!", 
                        text = "Can't check out! This student is still marked as checked out. Consider taking a note!")
-      }
-      
-    } else {
-      #sendSweetAlert(session, title = "Selection", 
-      #               text = "Please select one student.")
-    }
-  })
+      }}})
   
   observeEvent(input$decline_confirm, {
     if (isTRUE(input$decline_confirm)) {
@@ -250,8 +220,7 @@ server <- function(input, output, session) {
       # Clear search field and refocus
       updateSearchInput(session, "search", value = "", trigger = TRUE)
       session$sendCustomMessage("focus_search", "focus")
-    } 
-  })
+    }})
   
   # Note event
   observeEvent(input$note, {
