@@ -109,12 +109,12 @@ server <- function(input, output, session) {
   # rv <- reactiveValues(students = read.csv2("students.csv", 
   #                                           stringsAsFactors = FALSE))
   
-  
   rv <- reactiveValues()
   
   observe({
-    studentsorig <- reactiveFileReader(200, session = session, filePath = "students.csv", readFunc = read.csv2, stringsAsFactors = FALSE)
+    studentsorig <- reactiveFileReader(100, session = session, filePath = "students.csv", readFunc = read.csv2, stringsAsFactors = FALSE)
     rv$students <- studentsorig()
+    print(session$clientData$url_hostname)
   })
   
   output$nme <- renderText({
@@ -174,6 +174,17 @@ server <- function(input, output, session) {
         rv$students[sid_a, "Accepted"] <- TRUE
         rv$students[sid_a, "Log"] <- paste(na.omit(c(rv$students[sid_a, "Log"],as.character(Sys.time()), "[A]")), collapse = " ")
         rv$students[sid_a, "Modified"] <- Sys.time()
+        # Save log
+        cat(paste(
+          as.character(Sys.time()),rv$students[sid_a, "Matr.Number"],"[A]"), 
+          file= paste("log/log_", session$clientData$url_hostname, ".txt", sep = ""), 
+        append=TRUE, sep="\n")
+        # Save backup log
+        cat(paste(
+          as.character(Sys.time()),rv$students[sid_a, "Matr.Number"],"[A]"), 
+          file= paste(backup_path, "/log_", session$clientData$url_hostname, ".txt", sep = ""), 
+          append=TRUE, sep="\n")
+        
         # Clear search field and refocus
         updateSearchInput(session, "search", value = "", trigger = TRUE)
         session$sendCustomMessage("focus_search", "focus")
@@ -225,6 +236,17 @@ server <- function(input, output, session) {
       rv$students[sid_d, "Log"] <- paste(na.omit(c(rv$students[sid_d, "Log"], as.character(Sys.time()), "[D]")), collapse = " ")
       rv$students[sid_d, "Modified"] <- Sys.time()
       
+      # Save log:
+      cat(paste(
+        as.character(Sys.time()),rv$students[sid_d, "Matr.Number"],"[D]"), 
+        file= paste("log/log_", session$clientData$url_hostname, ".txt", sep = ""), 
+      append=TRUE, sep="\n")
+      # Save backup log:
+      cat(paste(
+        as.character(Sys.time()),rv$students[sid_d, "Matr.Number"],"[D]"), 
+        file= paste(backup_path, "/log_", session$clientData$url_hostname, ".txt", sep = ""), 
+        append=TRUE, sep="\n")
+      
       # Clear search field and refocus
       updateSearchInput(session, "search", value = "", trigger = TRUE)
       session$sendCustomMessage("focus_search", "focus")
@@ -238,12 +260,24 @@ server <- function(input, output, session) {
                               as.character(rv$students$Matr.Number)) |
                      rv$students$Name == input$search)
     
-    # Take Note if single student is selected
+    # Take Note if single student is selected else notify
     if(length(sid_n) == 1){
       
       rv$students[sid_n, "Note"] <- paste(na.omit(c(rv$students[sid_n, "Note"], input$note)), collapse = " ")
       rv$students[sid_n, "Log"] <- paste(na.omit(c(rv$students[sid_n, "Log"],as.character(Sys.time()), "[N]")), collapse = " ")
       rv$students[sid_n, "Modified"] <- Sys.time()
+      
+      # Save log:
+      cat(paste(
+        as.character(Sys.time()),rv$students[sid_n, "Matr.Number"],"[N]",input$note), 
+        file= paste("log/log_", session$clientData$url_hostname, ".txt", sep = ""), 
+      append=TRUE, sep="\n")
+      # Save backup log:
+      cat(paste(
+        as.character(Sys.time()),rv$students[sid_n, "Matr.Number"],"[N]",input$note), 
+        file= paste(backup_path, "/log_", session$clientData$url_hostname, ".txt", sep = ""), 
+        append=TRUE, sep="\n")
+      
       # Clear search field and refocus
       updateSearchInput(session, "search", value = "", trigger = TRUE)
       updateSearchInput(session, "note", value = "", trigger = FALSE)
@@ -259,10 +293,8 @@ server <- function(input, output, session) {
   observeEvent(rv$students, {
     # Update the CSV File
     write.csv2(file = "students.csv", x = rv$students, row.names = FALSE)
-    # Save internal Backup
-    write.csv2(file = paste("log/students ", format(Sys.time(), "%Y_%m_%d_%H_%M_%S"), ".csv", sep = ""), x = rv$students, row.names = FALSE)
     # Save external Backup
-    write.csv2(file = paste(backup_path, "/", format(Sys.time(), "%Y_%m_%d_%H_%M_%S"), ".csv", sep = ""), x = rv$students, row.names = FALSE)
+    write.csv2(file = paste(backup_path, "/", "students.csv", sep = ""), x = rv$students, row.names = FALSE)
   })
 
 }
