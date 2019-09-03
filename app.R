@@ -106,8 +106,16 @@ ui <- dashboardPage(skin = "green",
 
 server <- function(input, output, session) {
   
-  rv <- reactiveValues(students = read.csv2("students.csv", 
-                                            stringsAsFactors = FALSE))
+  # rv <- reactiveValues(students = read.csv2("students.csv", 
+  #                                           stringsAsFactors = FALSE))
+  
+  
+  rv <- reactiveValues()
+  
+  observe({
+    studentsorig <- reactiveFileReader(200, session = session, filePath = "students.csv", readFunc = read.csv2, stringsAsFactors = FALSE)
+    rv$students <- studentsorig()
+  })
   
   output$nme <- renderText({
     rv$students %>% 
@@ -226,7 +234,6 @@ server <- function(input, output, session) {
   # Note event
   observeEvent(input$note, {
     
-    print(input$note)
     sid_n <- which(str_detect(input$search, 
                               as.character(rv$students$Matr.Number)) |
                      rv$students$Name == input$search)
