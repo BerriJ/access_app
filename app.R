@@ -84,7 +84,7 @@ ui <- dashboardPage(skin = "green",
     # Box with search result: 
     box(title = "Search Result:",
       collapsible = FALSE, width = NULL,
-      h2(textOutput("nme"), align = "center")
+      h2(htmlOutput("nme"), align = "center")
     ),
     # Box with various tabs that show subsets of students dataframe
     tabBox(
@@ -115,9 +115,20 @@ server <- function(input, output, session) {
                                  dbReadTable(con, "students")})
   
 
-  output$nme <- renderText({students() %>% dplyr::filter(
-    str_detect(input$search, as.character(students()$matrnumber)) |
-          name == input$search) %>% dplyr::select(name) %>% unlist()})
+  output$nme <- renderUI({
+    forename <- students() %>% dplyr::filter(
+      str_detect(input$search, as.character(students()$matrnumber)) |
+        name == input$search) %>% dplyr::select(forename) %>% unlist()
+    name <- students() %>% dplyr::filter(
+      str_detect(input$search, as.character(students()$matrnumber)) |
+        name == input$search) %>% dplyr::select(name) %>% unlist()
+    shift <- students() %>% dplyr::filter(
+      str_detect(input$search, as.character(students()$matrnumber)) |
+        name == input$search) %>% dplyr::select(shift) %>% unlist()
+    if(length(name > 0)){
+      HTML(paste(forename, name, "<br/>", "Shift:", shift )) 
+    } else {HTML("No student selected.")}
+    })
 
   output$progressBox <- renderValueBox({
     valueBox(paste0(sum(students() %>% dplyr::filter(accepted == TRUE) %>%
@@ -140,7 +151,7 @@ server <- function(input, output, session) {
                         rownames = FALSE,
                         options = list(columnDefs = list(list(
                           className = 'dt-center', 
-                          targets = 1:5))))
+                          targets = 0:4))))
   output$studtable_open <- 
     DT::renderDataTable(students() %>% 
                           dplyr::filter(accepted == FALSE) %>% 
@@ -150,7 +161,7 @@ server <- function(input, output, session) {
                         options = list(
                           columnDefs = list(list(
                             className = 'dt-center', 
-                            targets = 1:5))))
+                            targets = 0:4))))
   output$studtable_note <- 
     DT::renderDataTable(students() %>%
                           dplyr::filter(!is.na(note)) %>%
@@ -160,7 +171,7 @@ server <- function(input, output, session) {
                         options = list(
                           columnDefs = list(list(
                             className = 'dt-center',
-                            targets = 1:5))))
+                            targets = 0:4))))
 
   # Accept Event
   observeEvent(input$accept, {
