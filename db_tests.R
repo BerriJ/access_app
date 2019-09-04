@@ -1,6 +1,6 @@
-# remotes::install_github("cwida/duckdb/tools/rpkg", build = FALSE)
-
-library(DBI)
+# remotes::install_github("hannesmuehleisen/MonetDBLite-R")
+# install.packages("DBI")
+# library(DBI)
 
 con <- dbConnect(MonetDBLite::MonetDBLite(), "db/")
 
