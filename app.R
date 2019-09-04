@@ -7,6 +7,14 @@ dir.create("backup_log", showWarnings = F)
 # Set options for data tables:
 options(DT.options = list(pageLength = 5, lengthMenu = c(5, 25, 50, 100,250)))
 
+# Connect to database:
+
+onStop(function() {
+  poolClose(con)
+})
+
+con <- dbPool(drv = RSQLite::SQLite(), dbname = "db/students_db")
+
 # Ask for backup path from user
 rstudioapi::showDialog("Backup Path", message = "The next step asks you to select
                        a folder for backups. Consider using an external Device
@@ -102,7 +110,7 @@ ui <- dashboardPage(skin = "green",
 ################################################################################
 
 server <- function(input, output, session) {
-  con <- dbConnect(RSQLite::SQLite(), "db/students_db")
+  # con <- dbConnect(RSQLite::SQLite(), "db/students_db")
   # rv will store reactive values like students dataframe
   students <- function(){dbReadTable(con, "students")}
   # Open the connection to database
@@ -189,16 +197,16 @@ server <- function(input, output, session) {
     sid_a <- which(str_detect(input$search,
                               as.character(students()$matrnumber)) |
                      students()$name == input$search)
-    
+
     # Check if (only) one student is selected
     if(length(sid_a) == 1){
 
-      if(!isTRUE(students()[sid_a, "accepted"])){
+      if(students()[sid_a, "accepted"] == FALSE | is.na(students()[sid_a, "accepted"])){
         # Accept the student, write log and write modification time
         con %>% dbExecute(paste("UPDATE students ",
                                 "SET accepted = '1', log = '", paste(na.omit(c(students()[sid_a, "log"],as.character(Sys.time()), "[A]")), collapse = " "),"', modified = '", Sys.time(), "' ",
-                                "WHERE ('",input$search, "' LIKE ('%' || matrnumber || '%')) OR ('",input$search,"' LIKE ('%' || name || '%'))", sep = ""))
-        
+                                "WHERE '",input$search, "' LIKE ('%' || matrnumber || '%') OR '",input$search,"' = name", sep = ""))
+
         # Save a log, backup data, reset- and refocus search field
         log_backup_reset(sid = sid_a, 
                          event = "[A]", 
@@ -247,7 +255,7 @@ server <- function(input, output, session) {
       
       con %>% dbExecute(paste("UPDATE students ",
                               "SET accepted = '0', log = '", paste(na.omit(c(students()[sid_d, "log"],as.character(Sys.time()), "[D]")), collapse = " "),"', modified = '", Sys.time(), "' ",
-                              "WHERE ('",input$search, "' LIKE ('%' || matrnumber || '%')) OR ('",input$search,"' LIKE ('%' || name || '%'))", sep = ""))
+                              "WHERE '",input$search, "' LIKE ('%' || matrnumber || '%') OR '",input$search,"' = name", sep = ""))
 
       # Save a log, backup data, reset- and refocus search field
       log_backup_reset(sid = sid_d, 
@@ -269,7 +277,7 @@ server <- function(input, output, session) {
       
       con %>% dbExecute(paste("UPDATE students ",
                               "SET note = '", paste(na.omit(c(students()[sid_n, "note"], input$note)), collapse = " "),"', log = '", paste(na.omit(c(students()[sid_n, "log"],as.character(Sys.time()), "[N]")), collapse = " "),"', modified = '", Sys.time(), "' ",
-                              "WHERE ('",input$search, "' LIKE ('%' || matrnumber || '%')) OR ('",input$search,"' LIKE ('%' || name || '%'))", sep = ""))
+                              "WHERE '",input$search, "' LIKE ('%' || matrnumber || '%') OR '",input$search,"' = name", sep = ""))
 
       # Save a log, backup data, reset- and refocus search field
       log_backup_reset(sid = sid_n, 
