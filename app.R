@@ -4,6 +4,9 @@ source("functions.R")
 # Create log folder if not existent
 dir.create("backup_log", showWarnings = F)
 
+# Set options for data tables:
+options(DT.options = list(pageLength = 5, lengthMenu = c(5, 25, 50, 100,250)))
+
 # Ask for backup path from user
 rstudioapi::showDialog("Backup Path", message = "The next step asks you to select
                        a folder for backups. Consider using an external Device
@@ -129,13 +132,35 @@ server <- function(input, output, session) {
   output$backup <- renderUI({
     HTML(paste("Saving Backup to:<br/>", backup_path, "/", sep= ""))})
 
-  output$studtable_accept <- DT::renderDataTable(students() %>%
-                                                   dplyr::filter(accepted == TRUE) %>%
-                                                   arrange(desc(modified)))
-  output$studtable_open <- DT::renderDataTable(students())
-  output$studtable_note <- DT::renderDataTable(students() %>%
-                                                 dplyr::filter(!is.na(note)) %>%
-                                                   arrange(desc(modified)))
+  output$studtable_accept <- 
+    DT::renderDataTable(students() %>%
+                          dplyr::filter(accepted == TRUE) %>%
+                          dplyr::arrange(desc(modified)) %>%
+                          dplyr::select(-modified), 
+                        rownames = FALSE,
+                        options = list(columnDefs = list(list(
+                          className = 'dt-center', 
+                          targets = 1:5))))
+  output$studtable_open <- 
+    DT::renderDataTable(students() %>% 
+                          dplyr::filter(accepted == FALSE) %>% 
+                          dplyr::arrange(desc(modified), name) %>%
+                          dplyr::select(-modified),
+                        rownames = FALSE,
+                        options = list(
+                          columnDefs = list(list(
+                            className = 'dt-center', 
+                            targets = 1:5))))
+  output$studtable_note <- 
+    DT::renderDataTable(students() %>%
+                          dplyr::filter(!is.na(note)) %>%
+                          arrange(desc(modified)) %>%
+                          dplyr::select(-modified),
+                        rownames = FALSE,
+                        options = list(
+                          columnDefs = list(list(
+                            className = 'dt-center',
+                            targets = 1:5))))
 
   # Accept Event
   observeEvent(input$accept, {
