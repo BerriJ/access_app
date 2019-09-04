@@ -91,7 +91,8 @@ ui <- dashboardPage(skin = "green",
       width = NULL, title = "Overview",side = "right", selected = "Checked In",
       tabPanel("Checked In", DT::dataTableOutput("studtable_accept")),
       tabPanel("Open", DT::dataTableOutput("studtable_open")),
-      tabPanel("With Note", DT::dataTableOutput("studtable_note"))
+      tabPanel("With Note", DT::dataTableOutput("studtable_note")),
+      tabPanel("Declined", DT::dataTableOutput("studtable_decline"))
     )
   )
 )
@@ -152,9 +153,18 @@ server <- function(input, output, session) {
                         options = list(columnDefs = list(list(
                           className = 'dt-center', 
                           targets = 0:4))))
+  output$studtable_decline <- 
+    DT::renderDataTable(students() %>%
+                          dplyr::filter(accepted == FALSE) %>%
+                          dplyr::arrange(desc(modified)) %>%
+                          dplyr::select(-modified), 
+                        rownames = FALSE,
+                        options = list(columnDefs = list(list(
+                          className = 'dt-center', 
+                          targets = 0:4))))
   output$studtable_open <- 
     DT::renderDataTable(students() %>% 
-                          dplyr::filter(accepted == FALSE) %>% 
+                          dplyr::filter(is.na(accepted)) %>% 
                           dplyr::arrange(desc(modified), name) %>%
                           dplyr::select(-modified),
                         rownames = FALSE,
@@ -183,7 +193,7 @@ server <- function(input, output, session) {
     # Check if (only) one student is selected
     if(length(sid_a) == 1){
 
-      if(!as.logical(students()[sid_a, "accepted"])){
+      if(!isTRUE(students()[sid_a, "accepted"])){
         # Accept the student, write log and write modification time
         con %>% dbExecute(paste("UPDATE students ",
                                 "SET accepted = '1', log = '", paste(na.omit(c(students()[sid_a, "log"],as.character(Sys.time()), "[A]")), collapse = " "),"', modified = '", Sys.time(), "' ",
@@ -215,7 +225,7 @@ server <- function(input, output, session) {
                      students()$name == input$search)
 
     if(length(sid_d) == 1){
-      if(students()[sid_d, "accepted"] == TRUE){
+      if(is.na(students()[sid_d, "accepted"]) | students()[sid_d, "accepted"] == TRUE){
         confirmSweetAlert(
           session = session,
           inputId = "decline_confirm",
