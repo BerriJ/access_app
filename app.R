@@ -222,7 +222,7 @@ server <- function(input, output, session) {
     if(length(sid_n) == 1){
       
       con %>% dbExecute(paste("UPDATE students ",
-                              "SET note = '", paste(na.omit(c(students()[sid_n, "Note"], input$note)), collapse = " "),"', log = '", paste(na.omit(c(students()[sid_n, "log"],as.character(Sys.time()), "[N]")), collapse = " "),"', modified = '", Sys.time(), "' ",
+                              "SET note = '", paste(na.omit(c(students()[sid_n, "note"], input$note)), collapse = " "),"', log = '", paste(na.omit(c(students()[sid_n, "log"],as.character(Sys.time()), "[N]")), collapse = " "),"', modified = '", Sys.time(), "' ",
                               "WHERE ('",input$search, "' LIKE ('%' || matrnumber || '%')) OR ('",input$search,"' LIKE ('%' || name || '%'))", sep = ""))
 
       # Save a log, backup data, reset- and refocus search field
