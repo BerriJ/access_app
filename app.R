@@ -4,18 +4,20 @@ library(DT)
 library(dplyr)
 library(stringr)
 library(shinyWidgets)
+library(RSQLite)
+library(DBI)
 
-# Ask for backup path from user
-rstudioapi::showDialog("Backup Path", message = "The next step asks you to select
-                       a folder for backups. Consider using an external Device
-                       for this. A backup is created for every change and named
-                       by date and time.")
-backup_path <- rstudioapi::selectDirectory(caption = "Backup Folder")
-
-while(is.null(backup_path)){
-  rstudioapi::showDialog("Backup Path", message = "Seriously: select a backup folder!")
-  backup_path <- rstudioapi::selectDirectory(caption = "Backup Folder")
-}
+# # Ask for backup path from user
+# rstudioapi::showDialog("Backup Path", message = "The next step asks you to select
+#                        a folder for backups. Consider using an external Device
+#                        for this. A backup is created for every change and named
+#                        by date and time.")
+# backup_path <- rstudioapi::selectDirectory(caption = "Backup Folder")
+# 
+# while(is.null(backup_path)){
+#   rstudioapi::showDialog("Backup Path", message = "Seriously: select a backup folder!")
+#   backup_path <- rstudioapi::selectDirectory(caption = "Backup Folder")
+# }
 
 ################################################################################
 ###################################  UI  #######################################
@@ -99,65 +101,74 @@ ui <- dashboardPage(skin = "green",
 ################################################################################
 
 server <- function(input, output, session) {
+  con <- dbConnect(RSQLite::SQLite(), "db/students_db")
   # rv will store reactive values like students dataframe
-  rv <- reactiveValues()
+  rv <- reactiveValues(students = tbl(con, "students"))
+  # Open the connection to database
+  s <- 0
   observe({
-    # read students.csv and assign to rv every 100 ms if csv has changed
-    studentsorig <- reactiveFileReader(100, session = session, filePath = "students.csv", readFunc = read.csv2, stringsAsFactors = FALSE)
+    studentsorig <- reactivePoll(intervalMillis = 50, session = session, 
+                             checkFunc = function() {
+                               if(all_equal(as.data.frame(rv$students),tbl(con, "students")) %>% isTRUE()){
+                                 ""
+                               }else{
+                                 s <- s+1
+                                 print(s)
+                                 s
+                               }},
+                             valueFunc = function(){
+                               dbReadTable(con, "students")})
     rv$students <- studentsorig()
-    print(session$clientData$url_hostname)
   })
-  
+
   output$nme <- renderText({rv$students %>% dplyr::filter(
-    str_detect(input$search, as.character(rv$students$Matr.Number)) | 
-          Name == input$search) %>% dplyr::select(Name) %>% unlist()})
-  
+    str_detect(input$search, as.character(rv$students$matrnumber)) |
+          name == input$search) %>% dplyr::select(name) %>% unlist()})
+
   output$progressBox <- renderValueBox({
-    valueBox(paste0(sum(rv$students %>% dplyr::filter(Accepted == TRUE) %>%
-                          dplyr::count())), "students checked in.", 
+    valueBox(paste0(sum(rv$students %>% dplyr::filter(accepted == TRUE) %>%
+                          dplyr::count())), "students checked in.",
              icon = icon("user-check"), color = "green")})
-  
+
   output$progressBox2 <- renderValueBox({valueBox(paste0(sum(rv$students %>%
-                         dplyr::filter(!is.na(Note)) %>% 
-                           dplyr::count())), "students with note.", 
+                         dplyr::filter(!is.na(note)) %>%
+                           dplyr::count())), "students with note.",
                          icon = icon("clipboard"), color = "yellow")})
-  
+
   output$backup <- renderUI({
     HTML(paste("Saving Backup to:<br/>", backup_path, "/", sep= ""))})
-  
+
   output$studtable_accept <- DT::renderDataTable(rv$students %>%
-                                                   dplyr::filter(Accepted == TRUE) %>%
-                                                   arrange(desc(Modified)))
-  output$studtable_open <- DT::renderDataTable(rv$students %>%
-                                                 dplyr::filter(Accepted == FALSE) %>% 
-                                                   dplyr::arrange(desc(Modified), Name))
+                                                   dplyr::filter(accepted == TRUE) %>%
+                                                   arrange(desc(modified)))
+  output$studtable_open <- DT::renderDataTable(rv$students)
   output$studtable_note <- DT::renderDataTable(rv$students %>%
-                                                 dplyr::filter(!is.na(Note)) %>%
-                                                   arrange(desc(Modified)))
-  
+                                                 dplyr::filter(!is.na(note)) %>%
+                                                   arrange(desc(modified)))
+
   # Accept Event
   observeEvent(input$accept, {
     
     sid_a <- which(str_detect(input$search, 
-                              as.character(rv$students$Matr.Number)) |
-                     rv$students$Name == input$search)
+                              as.character(rv$students$matrnumber)) |
+                     rv$students$name == input$search)
     
     # Check if (only) one student is selected
     if(length(sid_a) == 1){
       
-      if(!as.logical(rv$students[sid_a, "Accepted"])){
+      if(!as.logical(rv$students[sid_a, "accepted"])){
         # Accept the student
-        rv$students[sid_a, "Accepted"] <- TRUE
-        rv$students[sid_a, "Log"] <- paste(na.omit(c(rv$students[sid_a, "Log"],as.character(Sys.time()), "[A]")), collapse = " ")
-        rv$students[sid_a, "Modified"] <- Sys.time()
+        rv$students[sid_a, "accepted"] <- TRUE
+        rv$students[sid_a, "log"] <- paste(na.omit(c(rv$students[sid_a, "log"],as.character(Sys.time()), "[A]")), collapse = " ")
+        rv$students[sid_a, "modified"] <- Sys.time()
         # Save log
         cat(paste(
-          as.character(Sys.time()),rv$students[sid_a, "Matr.Number"],"[A]"), 
+          as.character(Sys.time()),rv$students[sid_a, "matrnumber"],"[A]"), 
           file= paste("log/log_", session$clientData$url_hostname, ".txt", sep = ""), 
         append=TRUE, sep="\n")
         # Save backup log
         cat(paste(
-          as.character(Sys.time()),rv$students[sid_a, "Matr.Number"],"[A]"), 
+          as.character(Sys.time()),rv$students[sid_a, "matrnumber"],"[A]"), 
           file= paste(backup_path, "/log_", session$clientData$url_hostname, ".txt", sep = ""), 
           append=TRUE, sep="\n")
         
@@ -178,11 +189,11 @@ server <- function(input, output, session) {
   observeEvent(input$decline, {
     
     sid_d <- which(str_detect(input$search, 
-                              as.character(rv$students$Matr.Number)) |
-                     rv$students$Name == input$search)
+                              as.character(rv$students$matrnumber)) |
+                     rv$students$name == input$search)
     
     if(length(sid_d) == 1){
-      if(rv$students[sid_d, "Accepted"] == TRUE){
+      if(rv$students[sid_d, "accepted"] == TRUE){
         confirmSweetAlert(
           session = session,
           inputId = "decline_confirm",
@@ -199,21 +210,21 @@ server <- function(input, output, session) {
     if (isTRUE(input$decline_confirm)) {
       
       sid_d <- which(str_detect(input$search, 
-                                as.character(rv$students$Matr.Number)) |
-                       rv$students$Name == input$search)
+                                as.character(rv$students$matrnumber)) |
+                       rv$students$name == input$search)
       
-      rv$students[sid_d, "Accepted"] <- FALSE
-      rv$students[sid_d, "Log"] <- paste(na.omit(c(rv$students[sid_d, "Log"], as.character(Sys.time()), "[D]")), collapse = " ")
-      rv$students[sid_d, "Modified"] <- Sys.time()
+      rv$students[sid_d, "accepted"] <- FALSE
+      rv$students[sid_d, "log"] <- paste(na.omit(c(rv$students[sid_d, "log"], as.character(Sys.time()), "[D]")), collapse = " ")
+      rv$students[sid_d, "modified"] <- Sys.time()
       
       # Save log:
       cat(paste(
-        as.character(Sys.time()),rv$students[sid_d, "Matr.Number"],"[D]"), 
+        as.character(Sys.time()),rv$students[sid_d, "matrnumber"],"[D]"), 
         file= paste("log/log_", session$clientData$url_hostname, ".txt", sep = ""), 
       append=TRUE, sep="\n")
       # Save backup log:
       cat(paste(
-        as.character(Sys.time()),rv$students[sid_d, "Matr.Number"],"[D]"), 
+        as.character(Sys.time()),rv$students[sid_d, "matrnumber"],"[D]"), 
         file= paste(backup_path, "/log_", session$clientData$url_hostname, ".txt", sep = ""), 
         append=TRUE, sep="\n")
       
@@ -226,24 +237,24 @@ server <- function(input, output, session) {
   observeEvent(input$note, {
     
     sid_n <- which(str_detect(input$search, 
-                              as.character(rv$students$Matr.Number)) |
-                     rv$students$Name == input$search)
+                              as.character(rv$students$matrnumber)) |
+                     rv$students$name == input$search)
     
     # Take Note if single student is selected else notify
     if(length(sid_n) == 1){
       
-      rv$students[sid_n, "Note"] <- paste(na.omit(c(rv$students[sid_n, "Note"], input$note)), collapse = " ")
-      rv$students[sid_n, "Log"] <- paste(na.omit(c(rv$students[sid_n, "Log"],as.character(Sys.time()), "[N]")), collapse = " ")
-      rv$students[sid_n, "Modified"] <- Sys.time()
+      rv$students[sid_n, "note"] <- paste(na.omit(c(rv$students[sid_n, "note"], input$note)), collapse = " ")
+      rv$students[sid_n, "log"] <- paste(na.omit(c(rv$students[sid_n, "log"],as.character(Sys.time()), "[N]")), collapse = " ")
+      rv$students[sid_n, "modified"] <- Sys.time()
       
       # Save log:
       cat(paste(
-        as.character(Sys.time()),rv$students[sid_n, "Matr.Number"],"[N]",input$note), 
+        as.character(Sys.time()),rv$students[sid_n, "matrnumber"],"[N]",input$note), 
         file= paste("log/log_", session$clientData$url_hostname, ".txt", sep = ""), 
       append=TRUE, sep="\n")
       # Save backup log:
       cat(paste(
-        as.character(Sys.time()),rv$students[sid_n, "Matr.Number"],"[N]",input$note), 
+        as.character(Sys.time()),rv$students[sid_n, "matrnumber"],"[N]",input$note), 
         file= paste(backup_path, "/log_", session$clientData$url_hostname, ".txt", sep = ""), 
         append=TRUE, sep="\n")
       
@@ -259,12 +270,12 @@ server <- function(input, output, session) {
     }
   })
   
-  observeEvent(rv$students, {
-    # Update the CSV File
-    write.csv2(file = "students.csv", x = rv$students, row.names = FALSE)
-    # Save external Backup
-    write.csv2(file = paste(backup_path, "/", "students.csv", sep = ""), x = rv$students, row.names = FALSE)
-  })
+  # observeEvent(rv$students, {
+  #   # Update the CSV File
+  #   write.csv2(file = "students.csv", x = rv$students, row.names = FALSE)
+  #   # Save external Backup
+  #   write.csv2(file = paste(backup_path, "/", "students.csv", sep = ""), x = rv$students, row.names = FALSE)
+  # })
 
 }
 
