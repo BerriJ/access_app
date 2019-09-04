@@ -1,23 +1,20 @@
-library(shinydashboard)
-library(shiny)
-library(DT)
-library(dplyr)
-library(stringr)
-library(shinyWidgets)
-library(RSQLite)
-library(DBI)
+source("packages.R")
+source("functions.R")
 
-# # Ask for backup path from user
-# rstudioapi::showDialog("Backup Path", message = "The next step asks you to select
-#                        a folder for backups. Consider using an external Device
-#                        for this. A backup is created for every change and named
-#                        by date and time.")
-# backup_path <- rstudioapi::selectDirectory(caption = "Backup Folder")
-# 
-# while(is.null(backup_path)){
-#   rstudioapi::showDialog("Backup Path", message = "Seriously: select a backup folder!")
-#   backup_path <- rstudioapi::selectDirectory(caption = "Backup Folder")
-# }
+# Create log folder if not existent
+dir.create("backup_log", showWarnings = F)
+
+# Ask for backup path from user
+rstudioapi::showDialog("Backup Path", message = "The next step asks you to select
+                       a folder for backups. Consider using an external Device
+                       for this. A backup is created for every change and named
+                       by date and time.")
+backup_path <- rstudioapi::selectDirectory(caption = "Backup Folder")
+
+while(is.null(backup_path)){
+  rstudioapi::showDialog("Backup Path", message = "Seriously: select a backup folder!")
+  backup_path <- rstudioapi::selectDirectory(caption = "Backup Folder")
+}
 
 ################################################################################
 ###################################  UI  #######################################
@@ -103,34 +100,28 @@ ui <- dashboardPage(skin = "green",
 server <- function(input, output, session) {
   con <- dbConnect(RSQLite::SQLite(), "db/students_db")
   # rv will store reactive values like students dataframe
-  rv <- reactiveValues(students = tbl(con, "students"))
+  students <- function(){dbReadTable(con, "students")}
   # Open the connection to database
   s <- 0
-  observe({
-    studentsorig <- reactivePoll(intervalMillis = 50, session = session, 
-                             checkFunc = function() {
-                               if(all_equal(as.data.frame(rv$students),tbl(con, "students")) %>% isTRUE()){
-                                 ""
-                               }else{
-                                 s <- s+1
-                                 print(s)
-                                 s
-                               }},
-                             valueFunc = function(){
-                               dbReadTable(con, "students")})
-    rv$students <- studentsorig()
-  })
+  
+  students <- reactivePoll(intervalMillis = 50, session = session, 
+                               checkFunc = function() {
+                                 if(all_equal(as.data.frame(students()),dbReadTable(con, "students")) %>% isTRUE()){0}else{1}
+                                 },
+                               valueFunc = function(){
+                                 dbReadTable(con, "students")})
+  
 
-  output$nme <- renderText({rv$students %>% dplyr::filter(
-    str_detect(input$search, as.character(rv$students$matrnumber)) |
+  output$nme <- renderText({students() %>% dplyr::filter(
+    str_detect(input$search, as.character(students()$matrnumber)) |
           name == input$search) %>% dplyr::select(name) %>% unlist()})
 
   output$progressBox <- renderValueBox({
-    valueBox(paste0(sum(rv$students %>% dplyr::filter(accepted == TRUE) %>%
+    valueBox(paste0(sum(students() %>% dplyr::filter(accepted == TRUE) %>%
                           dplyr::count())), "students checked in.",
              icon = icon("user-check"), color = "green")})
 
-  output$progressBox2 <- renderValueBox({valueBox(paste0(sum(rv$students %>%
+  output$progressBox2 <- renderValueBox({valueBox(paste0(sum(students() %>%
                          dplyr::filter(!is.na(note)) %>%
                            dplyr::count())), "students with note.",
                          icon = icon("clipboard"), color = "yellow")})
@@ -138,62 +129,57 @@ server <- function(input, output, session) {
   output$backup <- renderUI({
     HTML(paste("Saving Backup to:<br/>", backup_path, "/", sep= ""))})
 
-  output$studtable_accept <- DT::renderDataTable(rv$students %>%
+  output$studtable_accept <- DT::renderDataTable(students() %>%
                                                    dplyr::filter(accepted == TRUE) %>%
                                                    arrange(desc(modified)))
-  output$studtable_open <- DT::renderDataTable(rv$students)
-  output$studtable_note <- DT::renderDataTable(rv$students %>%
+  output$studtable_open <- DT::renderDataTable(students())
+  output$studtable_note <- DT::renderDataTable(students() %>%
                                                  dplyr::filter(!is.na(note)) %>%
                                                    arrange(desc(modified)))
 
   # Accept Event
   observeEvent(input$accept, {
-    
-    sid_a <- which(str_detect(input$search, 
-                              as.character(rv$students$matrnumber)) |
-                     rv$students$name == input$search)
+
+    sid_a <- which(str_detect(input$search,
+                              as.character(students()$matrnumber)) |
+                     students()$name == input$search)
     
     # Check if (only) one student is selected
     if(length(sid_a) == 1){
-      
-      if(!as.logical(rv$students[sid_a, "accepted"])){
-        # Accept the student
-        rv$students[sid_a, "accepted"] <- TRUE
-        rv$students[sid_a, "log"] <- paste(na.omit(c(rv$students[sid_a, "log"],as.character(Sys.time()), "[A]")), collapse = " ")
-        rv$students[sid_a, "modified"] <- Sys.time()
-        # Save log
-        cat(paste(
-          as.character(Sys.time()),rv$students[sid_a, "matrnumber"],"[A]"), 
-          file= paste("log/log_", session$clientData$url_hostname, ".txt", sep = ""), 
-        append=TRUE, sep="\n")
-        # Save backup log
-        cat(paste(
-          as.character(Sys.time()),rv$students[sid_a, "matrnumber"],"[A]"), 
-          file= paste(backup_path, "/log_", session$clientData$url_hostname, ".txt", sep = ""), 
-          append=TRUE, sep="\n")
+
+      if(!as.logical(students()[sid_a, "accepted"])){
+        # Accept the student, write log and write modification time
+        con %>% dbExecute(paste("UPDATE students ",
+                                "SET accepted = '1', log = '", paste(na.omit(c(students()[sid_a, "log"],as.character(Sys.time()), "[A]")), collapse = " "),"', modified = '", Sys.time(), "' ",
+                                "WHERE ('",input$search, "' LIKE ('%' || matrnumber || '%')) OR ('",input$search,"' LIKE ('%' || name || '%'))", sep = ""))
         
-        # Clear search field and refocus
-        updateSearchInput(session, "search", value = "", trigger = TRUE)
-        session$sendCustomMessage("focus_search", "focus")
+        # Save a log, backup data, reset- and refocus search field
+        log_backup_reset(sid = sid_a, 
+                         event = "[A]", 
+                         backup_path = backup_path, 
+                         session = session,
+                         data = students())
+        
       } else {
-        sendSweetAlert(session, title = "Already Accepted", 
+        sendSweetAlert(session, title = "Already Accepted",
                        text = "This student is already checked in! Consider taking a note!")
       }
     } else {
-      sendSweetAlert(session, title = "Selection", 
+      sendSweetAlert(session, title = "Selection",
                      text = "Please select one student.")
     }
   })
-  
+
   # Decline Event
+  # Ask user to confirm or cancel
   observeEvent(input$decline, {
-    
-    sid_d <- which(str_detect(input$search, 
-                              as.character(rv$students$matrnumber)) |
-                     rv$students$name == input$search)
-    
+
+    sid_d <- which(str_detect(input$search,
+                              as.character(students()$matrnumber)) |
+                     students()$name == input$search)
+
     if(length(sid_d) == 1){
-      if(rv$students[sid_d, "accepted"] == TRUE){
+      if(students()[sid_d, "accepted"] == TRUE){
         confirmSweetAlert(
           session = session,
           inputId = "decline_confirm",
@@ -202,81 +188,59 @@ server <- function(input, output, session) {
           text = "Do you really want to check out? This should rarely be the case.",
           danger_mode = TRUE)
       } else {
-        sendSweetAlert(session, title = "Can't Check Out!", 
+        sendSweetAlert(session, title = "Can't Check Out!",
                        text = "Can't check out! This student is still marked as checked out. Consider taking a note!")
       }}})
-  
+
   observeEvent(input$decline_confirm, {
-    if (isTRUE(input$decline_confirm)) {
+    if(isTRUE(input$decline_confirm)) {
+
+      sid_d <- which(str_detect(input$search,
+                                as.character(students()$matrnumber)) |
+                       students()$name == input$search)
       
-      sid_d <- which(str_detect(input$search, 
-                                as.character(rv$students$matrnumber)) |
-                       rv$students$name == input$search)
-      
-      rv$students[sid_d, "accepted"] <- FALSE
-      rv$students[sid_d, "log"] <- paste(na.omit(c(rv$students[sid_d, "log"], as.character(Sys.time()), "[D]")), collapse = " ")
-      rv$students[sid_d, "modified"] <- Sys.time()
-      
-      # Save log:
-      cat(paste(
-        as.character(Sys.time()),rv$students[sid_d, "matrnumber"],"[D]"), 
-        file= paste("log/log_", session$clientData$url_hostname, ".txt", sep = ""), 
-      append=TRUE, sep="\n")
-      # Save backup log:
-      cat(paste(
-        as.character(Sys.time()),rv$students[sid_d, "matrnumber"],"[D]"), 
-        file= paste(backup_path, "/log_", session$clientData$url_hostname, ".txt", sep = ""), 
-        append=TRUE, sep="\n")
-      
-      # Clear search field and refocus
-      updateSearchInput(session, "search", value = "", trigger = TRUE)
-      session$sendCustomMessage("focus_search", "focus")
+      con %>% dbExecute(paste("UPDATE students ",
+                              "SET accepted = '0', log = '", paste(na.omit(c(students()[sid_d, "log"],as.character(Sys.time()), "[D]")), collapse = " "),"', modified = '", Sys.time(), "' ",
+                              "WHERE ('",input$search, "' LIKE ('%' || matrnumber || '%')) OR ('",input$search,"' LIKE ('%' || name || '%'))", sep = ""))
+
+      # Save a log, backup data, reset- and refocus search field
+      log_backup_reset(sid = sid_d, 
+                       event = "[D]", 
+                       backup_path = backup_path, 
+                       session = session,
+                       data = students())
     }})
-  
+
   # Note event
-  observeEvent(input$note, {
-    
-    sid_n <- which(str_detect(input$search, 
-                              as.character(rv$students$matrnumber)) |
-                     rv$students$name == input$search)
-    
+  observeEvent(c(input$note, input$note_search), {
+
+    sid_n <- which(str_detect(input$search,
+                              as.character(students()$matrnumber)) |
+                     students()$name == input$search)
+
     # Take Note if single student is selected else notify
     if(length(sid_n) == 1){
       
-      rv$students[sid_n, "note"] <- paste(na.omit(c(rv$students[sid_n, "note"], input$note)), collapse = " ")
-      rv$students[sid_n, "log"] <- paste(na.omit(c(rv$students[sid_n, "log"],as.character(Sys.time()), "[N]")), collapse = " ")
-      rv$students[sid_n, "modified"] <- Sys.time()
-      
-      # Save log:
-      cat(paste(
-        as.character(Sys.time()),rv$students[sid_n, "matrnumber"],"[N]",input$note), 
-        file= paste("log/log_", session$clientData$url_hostname, ".txt", sep = ""), 
-      append=TRUE, sep="\n")
-      # Save backup log:
-      cat(paste(
-        as.character(Sys.time()),rv$students[sid_n, "matrnumber"],"[N]",input$note), 
-        file= paste(backup_path, "/log_", session$clientData$url_hostname, ".txt", sep = ""), 
-        append=TRUE, sep="\n")
-      
-      # Clear search field and refocus
-      updateSearchInput(session, "search", value = "", trigger = TRUE)
+      con %>% dbExecute(paste("UPDATE students ",
+                              "SET note = '", paste(na.omit(c(students()[sid_n, "Note"], input$note)), collapse = " "),"', log = '", paste(na.omit(c(students()[sid_n, "log"],as.character(Sys.time()), "[N]")), collapse = " "),"', modified = '", Sys.time(), "' ",
+                              "WHERE ('",input$search, "' LIKE ('%' || matrnumber || '%')) OR ('",input$search,"' LIKE ('%' || name || '%'))", sep = ""))
+
+      # Save a log, backup data, reset- and refocus search field
+      log_backup_reset(sid = sid_n, 
+                       event = "[N]", 
+                       backup_path = backup_path, 
+                       session = session, 
+                       data = students(),
+                       note = input$note)
+      # Clear Note field
       updateSearchInput(session, "note", value = "", trigger = FALSE)
-      session$sendCustomMessage("focus_search", "focus")
     } else {
       if(input$note != ""){
-        sendSweetAlert(session, title = "Selection", 
-                       text = "Please select one student.")   
+        sendSweetAlert(session, title = "Selection",
+                       text = "Please select one student.")
       }
     }
   })
-  
-  # observeEvent(rv$students, {
-  #   # Update the CSV File
-  #   write.csv2(file = "students.csv", x = rv$students, row.names = FALSE)
-  #   # Save external Backup
-  #   write.csv2(file = paste(backup_path, "/", "students.csv", sep = ""), x = rv$students, row.names = FALSE)
-  # })
-
 }
 
 shinyApp(ui, server)

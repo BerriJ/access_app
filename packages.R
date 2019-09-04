@@ -1,0 +1,8 @@
+library(shinydashboard)
+library(shiny)
+library(DT)
+library(dplyr)
+library(stringr)
+library(shinyWidgets)
+library(RSQLite)
+library(DBI)
