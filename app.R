@@ -160,7 +160,7 @@ server <- function(input, output, session) {
                         rownames = FALSE,
                         options = list(columnDefs = list(list(
                           className = 'dt-center', 
-                          targets = 0:4))))
+                          targets = 0:6))))
   output$studtable_decline <- 
     DT::renderDataTable(students() %>%
                           dplyr::filter(accepted == FALSE) %>%
@@ -169,7 +169,7 @@ server <- function(input, output, session) {
                         rownames = FALSE,
                         options = list(columnDefs = list(list(
                           className = 'dt-center', 
-                          targets = 0:4))))
+                          targets = 0:6))))
   output$studtable_open <- 
     DT::renderDataTable(students() %>% 
                           dplyr::filter(is.na(accepted)) %>% 
@@ -179,7 +179,7 @@ server <- function(input, output, session) {
                         options = list(
                           columnDefs = list(list(
                             className = 'dt-center', 
-                            targets = 0:4))))
+                            targets = 0:6))))
   output$studtable_note <- 
     DT::renderDataTable(students() %>%
                           dplyr::filter(!is.na(note)) %>%
