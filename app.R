@@ -205,7 +205,7 @@ server <- function(input, output, session) {
         # Accept the student, write log and write modification time
         con %>% dbExecute(paste("UPDATE students ",
                                 "SET accepted = '1', log = '", paste(na.omit(c(students()[sid_a, "log"],as.character(Sys.time()), "[A]")), collapse = " "),"', modified = '", Sys.time(), "' ",
-                                "WHERE '",input$search, "' LIKE ('%' || matrnumber || '%') OR '",input$search,"' = name", sep = ""))
+                                "WHERE matrnumber = ",students()[sid_a, "matrnumber"], sep = ""))
 
         # Save a log, backup data, reset- and refocus search field
         log_backup_reset(sid = sid_a, 
@@ -255,7 +255,7 @@ server <- function(input, output, session) {
       
       con %>% dbExecute(paste("UPDATE students ",
                               "SET accepted = '0', log = '", paste(na.omit(c(students()[sid_d, "log"],as.character(Sys.time()), "[D]")), collapse = " "),"', modified = '", Sys.time(), "' ",
-                              "WHERE '",input$search, "' LIKE ('%' || matrnumber || '%') OR '",input$search,"' = name", sep = ""))
+                              "WHERE matrnumber = ",students()[sid_d, "matrnumber"], sep = ""))
 
       # Save a log, backup data, reset- and refocus search field
       log_backup_reset(sid = sid_d, 
@@ -277,7 +277,7 @@ server <- function(input, output, session) {
       
       con %>% dbExecute(paste("UPDATE students ",
                               "SET note = '", paste(na.omit(c(students()[sid_n, "note"], input$note)), collapse = " "),"', log = '", paste(na.omit(c(students()[sid_n, "log"],as.character(Sys.time()), "[N]")), collapse = " "),"', modified = '", Sys.time(), "' ",
-                              "WHERE '",input$search, "' LIKE ('%' || matrnumber || '%') OR '",input$search,"' = name", sep = ""))
+                              "WHERE matrnumber = ",students()[sid_n, "matrnumber"], sep = ""))
 
       # Save a log, backup data, reset- and refocus search field
       log_backup_reset(sid = sid_n, 
