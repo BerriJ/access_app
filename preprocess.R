@@ -9,7 +9,7 @@ students <- dataset %>% as_tibble() %>%
   mutate_at(vars("Matrikelnummer"), .funs = as.numeric) %>%
   dplyr::select("Vorname", "Nachname", "Matrikelnummer") %>%
   rename("name" = "Nachname", "forename" = "Vorname", "matrnumber" = "Matrikelnummer") %>%
-  add_column("accepted" = NA, "note" = NA, "log" = NA, "modified" = NA, "shift" = NA) %>%
+  add_column("accepted" = NA, "note" = NA, "log" = NA, "modified" = NA, "shift" = NA, "overbooked" = NA) %>%
   filter_all(any_vars(!is.na(.)))
 
 seats <-  150    # set No. of seats available
@@ -18,6 +18,9 @@ overbook <- 0.05    # factor for overbooking (input as decimal)
 booking <- seats*(1+overbook)
 shift_no <- ceiling(nrow(students)/booking)
 students$shift <- rep(1:shift_no, each = booking)[1:nrow(students)]
+
+
+# students$overbooked[(rep(1:2, each = (booking-seats))*(seats+1):booking)] <- "OVERBOOKED"
 
 
 dir.create("db", showWarnings = F)
