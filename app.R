@@ -241,10 +241,10 @@ server <- function(input, output, session) {
                          session = session,
                          data = students())
         
-        if(sum(students() %>% dplyr::filter(accepted == TRUE) %>%
-               dplyr::count() - sum(rv$stats[,"sumstudents"])) == maxnumshift){
+        if((sum(dbReadTable(con, "students") %>% dplyr::filter(accepted == TRUE) %>%
+                nrow() - sum(rv$stats[,"sumstudents"]))) == maxnumshift){
           sendSweetAlert(session, title = "Limit Reached",
-                         text = "You have reached the maximum number of Students.", type = warning)
+                         text = "You have reached the maximum number of Students.", type = "warning")
         }
         
       } else {
