@@ -26,10 +26,3 @@ students$shift <- rep(1:shift_no, each = booking)[1:nrow(students)]
 dir.create("db", showWarnings = F)
 con <- dbConnect(RSQLite::SQLite(), "db/students_db")
 dbWriteTable(con, "students", students)
-
-### Example:
-read.csv2("example_students.csv")
-
-dir.create("db", showWarnings = F)
-con <- dbConnect(RSQLite::SQLite(), "db/students_db")
-dbWriteTable(con, "students", students)
