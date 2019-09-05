@@ -22,7 +22,13 @@ students$shift <- rep(1:shift_no, each = booking)[1:nrow(students)]
 
 # students$overbooked[(rep(1:2, each = (booking-seats))*(seats+1):booking)] <- "OVERBOOKED"
 
+# create summary table:
+
+stats <- data.frame(shift = c(1,2,3,4), sumstudents = c(0,0,0,0))
 
 dir.create("db", showWarnings = F)
 con <- dbConnect(RSQLite::SQLite(), "db/students_db")
 dbWriteTable(con, "students", students)
+dbWriteTable(con, "stats", stats, overwrite = T)
+
+dbReadTable(con, "stats")

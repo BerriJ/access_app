@@ -1,6 +1,9 @@
 source("packages.R")
 source("functions.R")
 
+# Maximum number per shift:
+maxnumshift <- 142
+
 # Create log folder if not existent
 dir.create("backup_log", showWarnings = F)
 
@@ -8,7 +11,6 @@ dir.create("backup_log", showWarnings = F)
 options(DT.options = list(pageLength = 5, lengthMenu = c(5, 25, 50, 100,250)))
 
 # Connect to database:
-
 onStop(function() {
   poolClose(con)
 })
@@ -78,6 +80,15 @@ ui <- dashboardPage(skin = "green",
     # Info box for sum of students with a note
     fluidRow(align = "center",style = "position:fixed, bottom:0",
              column(10, offset = 1,valueBoxOutput("progressBox2", width = NULL))),
+    fluidRow(align = "center",
+             actionButton("finish_shift", # Row for accept decline buttons
+                          "Close Shift",
+                          style = "color: #ffffff;
+                         background-color: #878787;
+                         width: 200px;
+                         height: 60px;
+                         border-color:#878787;
+                                 font-size: 16px")),
     # Backup path
     htmlOutput("backup"),
     # Include footer
@@ -100,7 +111,9 @@ ui <- dashboardPage(skin = "green",
       tabPanel("Checked In", DT::dataTableOutput("studtable_accept")),
       tabPanel("Open", DT::dataTableOutput("studtable_open")),
       tabPanel("With Note", DT::dataTableOutput("studtable_note")),
-      tabPanel("Declined", DT::dataTableOutput("studtable_decline"))
+      tabPanel("Declined", DT::dataTableOutput("studtable_decline")),
+      tabPanel("All", DT::dataTableOutput("studtable_all")),
+      tabPanel("Stats", DT::dataTableOutput("stats"))
     )
   )
 )
@@ -110,11 +123,10 @@ ui <- dashboardPage(skin = "green",
 ################################################################################
 
 server <- function(input, output, session) {
-  # con <- dbConnect(RSQLite::SQLite(), "db/students_db")
-  # rv will store reactive values like students dataframe
+
   students <- function(){dbReadTable(con, "students")}
-  # Open the connection to database
-  s <- 0
+  
+  rv <- reactiveValues(stats = dbReadTable(con, "stats"))
   
   students <- reactivePoll(intervalMillis = 50, session = session, 
                                checkFunc = function() {
@@ -123,7 +135,6 @@ server <- function(input, output, session) {
                                valueFunc = function(){
                                  dbReadTable(con, "students")})
   
-
   output$nme <- renderUI({
     forename <- students() %>% dplyr::filter(
       str_detect(input$search, as.character(students()$matrnumber)) |
@@ -138,12 +149,12 @@ server <- function(input, output, session) {
       HTML(paste(forename, name, "<br/>", "Shift:", shift )) 
     } else {HTML("No student selected.")}
     })
-
+  
   output$progressBox <- renderValueBox({
     valueBox(paste0(sum(students() %>% dplyr::filter(accepted == TRUE) %>%
-                          dplyr::count())), "students checked in.",
+                          dplyr::count() - sum(rv$stats[,"sumstudents"]))), "students checked in.",
              icon = icon("user-check"), color = "green")})
-
+  
   output$progressBox2 <- renderValueBox({valueBox(paste0(sum(students() %>%
                          dplyr::filter(!is.na(note)) %>%
                            dplyr::count())), "students with note.",
@@ -189,7 +200,23 @@ server <- function(input, output, session) {
                         options = list(
                           columnDefs = list(list(
                             className = 'dt-center',
-                            targets = 0:4))))
+                            targets = 0:6))))
+  output$studtable_all <- 
+    DT::renderDataTable(students() %>%
+                          arrange(desc(modified)) %>%
+                          dplyr::select(-modified),
+                        rownames = FALSE,
+                        options = list(
+                          columnDefs = list(list(
+                            className = 'dt-center',
+                            targets = 0:6))))
+  output$stats <- 
+    DT::renderDataTable(rv$stats,
+                        rownames = FALSE,
+                        options = list(
+                          columnDefs = list(list(
+                            className = 'dt-center',
+                            targets = 0:1))))
 
   # Accept Event
   observeEvent(input$accept, {
@@ -213,6 +240,12 @@ server <- function(input, output, session) {
                          backup_path = backup_path, 
                          session = session,
                          data = students())
+        
+        if(sum(students() %>% dplyr::filter(accepted == TRUE) %>%
+               dplyr::count() - sum(rv$stats[,"sumstudents"])) == maxnumshift){
+          sendSweetAlert(session, title = "Limit Reached",
+                         text = "You have reached the maximum number of Students.", type = warning)
+        }
         
       } else {
         sendSweetAlert(session, title = "Already Accepted",
@@ -295,9 +328,32 @@ server <- function(input, output, session) {
       }
     }
   })
+  
+  # Close shift event:
+  
+  observeEvent(input$finish_shift, {
+    confirmSweetAlert(
+      session = session,
+      inputId = "finish_confirm",
+      type = "warning",
+      title = "Want to finish this shift?",
+      text = "This action will reset the sum of students. It can't be reverted.",
+      danger_mode = TRUE)
+  })
+  
+  observeEvent(input$finish_confirm, {
+    
+    con %>% dbExecute(paste("UPDATE stats ",
+                            "SET sumstudents = ", (sum(students() %>% dplyr::filter(accepted == TRUE) %>% dplyr::count()) - sum(dbReadTable(con, "stats")[,"sumstudents"])),
+                            " WHERE shift = ", min(which(dbReadTable(con, "stats")[,"sumstudents"] == 0)) , sep = ""))
+    
+    rv$stats <- dbReadTable(con, "stats")
+    
+    })
 }
 
-options(shiny.host = '192.168.0.2')
+# options(shiny.host = '192.168.0.2')
+options(shiny.host = '127.0.0.1')
 options(shiny.port = 8888)
 
 shinyApp(ui, server)
