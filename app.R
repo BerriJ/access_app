@@ -1,19 +1,8 @@
 source("packages.R")
 source("functions.R")
 
-
-# Create log folder if not existent
-dir.create("backup_log", showWarnings = F)
-
 # Set options for data tables:
-options(DT.options = list(pageLength = 5, lengthMenu = c(5, 25, 50, 100,250)))
-
-# Connect to database:
-onStop(function() {
-  poolClose(con)
-})
-
-con <- dbPool(drv = RSQLite::SQLite(), dbname = "db/students_db")
+options(DT.options = list(pageLength = 10, lengthMenu = c(10, 25, 50, 100,250)))
 
 # Ask for backup path from user
 rstudioapi::showDialog("Backup Path", message = "The next step asks you to select
@@ -27,19 +16,19 @@ while(is.null(backup_path)){
   backup_path <- rstudioapi::selectDirectory(caption = "Backup Folder")
 }
 
+# Create log folder if not existent
+dir.create("backup_log", showWarnings = F)
+
+con <- dbPool(drv = RSQLite::SQLite(), dbname = "db/students_db")
+
+# Connect to database:
+onStop(function() {
+  poolClose(con)
+})
+
 ################################################################################
 ###################################  UI  #######################################
 ################################################################################
-
-mycss <- "
-.irs-bar,
-.irs-bar-edge,
-.irs-single,
-.irs-grid-pol {
-  background: #242424;
-  border-color: #242424;
-}
-"
 
 ui <- dashboardPage(skin = "green",
                     
@@ -125,7 +114,7 @@ ui <- dashboardPage(skin = "green",
                       # Box with search result: 
                       box(title = "Search Result:",
                           collapsible = FALSE, width = NULL,
-                          h2(htmlOutput("nme"), align = "center")
+                          h2(htmlOutput("results"), align = "center")
                       ),
                       # Box with various tabs that show subsets of students dataframe
                       tabBox(
@@ -146,18 +135,22 @@ ui <- dashboardPage(skin = "green",
 
 server <- function(input, output, session) {
   
-  students <- function(){dbReadTable(con, "students")}
-  
-  rv <- reactiveValues(stats = dbReadTable(con, "stats"))
+  students <- function(){}
+  stats <- function(){}
   
   students <- reactivePoll(intervalMillis = 50, session = session, 
                            checkFunc = function() {
-                             if(all_equal(as.data.frame(students()),dbReadTable(con, "students")) %>% isTRUE()){0}else{1}
-                           },
-                           valueFunc = function(){
-                             dbReadTable(con, "students")})
+                             if(all_equal(as.data.frame(students()),dbReadTable(con, "students")) %>% isTRUE()){0}else{1}},
+                           valueFunc = function(){dbReadTable(con, "students")})
   
-  output$nme <- renderUI({
+  stats <- reactivePoll(intervalMillis = 50, session = session, 
+                           checkFunc = function() {
+                             if(all_equal(as.data.frame(stats()),dbReadTable(con, "stats")) %>% isTRUE()){0}else{1}},
+                           valueFunc = function(){dbReadTable(con, "stats")})
+  
+  # Render the search results:
+  
+  output$results <- renderUI({
     forename <- students() %>% dplyr::filter(
       str_detect(input$search, as.character(students()$matrnumber)) |
         name == input$search) %>% dplyr::select(forename) %>% unlist()
@@ -172,25 +165,32 @@ server <- function(input, output, session) {
     } else {HTML("No student selected.")}
   })
   
+  # Render sum of accepted students
+  
   output$progressBox <- renderValueBox({
     valueBox(paste0(sum(students() %>% dplyr::filter(accepted == TRUE) %>%
-                          dplyr::count() - sum(rv$stats[,"sumstudents"]))), "students checked in.",
+                          dplyr::count() - sum(stats()[,"sumstudents"]))), "students checked in.",
              icon = icon("user-check"), color = "green")})
+  
+  # Render sum of students with note
   
   output$progressBox2 <- renderValueBox({valueBox(paste0(sum(students() %>%
                                                                dplyr::filter(!is.na(note)) %>%
                                                                dplyr::count())), "students with note.",
                                                   icon = icon("user-edit"), color = "yellow")})
   
+  # Render the backup path
+  
   output$backup <- renderUI({
     HTML(paste("Saving Backup to:<br/>", backup_path, "/", sep= ""))})
+  
+  # Render all data tables
   
   output$studtable_accept <- 
     DT::renderDataTable(students() %>%
                           dplyr::filter(accepted == TRUE) %>%
                           dplyr::arrange(desc(modified)) %>%
-                          dplyr::select(-modified), 
-                        rownames = FALSE,
+                          dplyr::select(-modified), rownames = FALSE,
                         options = list(columnDefs = list(list(
                           className = 'dt-center', 
                           targets = 0:6))))
@@ -198,8 +198,7 @@ server <- function(input, output, session) {
     DT::renderDataTable(students() %>%
                           dplyr::filter(accepted == FALSE) %>%
                           dplyr::arrange(desc(modified)) %>%
-                          dplyr::select(-modified), 
-                        rownames = FALSE,
+                          dplyr::select(-modified), rownames = FALSE,
                         options = list(columnDefs = list(list(
                           className = 'dt-center', 
                           targets = 0:6))))
@@ -207,8 +206,7 @@ server <- function(input, output, session) {
     DT::renderDataTable(students() %>% 
                           dplyr::filter(is.na(accepted)) %>% 
                           dplyr::arrange(desc(modified), name) %>%
-                          dplyr::select(-modified),
-                        rownames = FALSE,
+                          dplyr::select(-modified), rownames = FALSE,
                         options = list(
                           columnDefs = list(list(
                             className = 'dt-center', 
@@ -217,8 +215,7 @@ server <- function(input, output, session) {
     DT::renderDataTable(students() %>%
                           dplyr::filter(!is.na(note)) %>%
                           arrange(desc(modified)) %>%
-                          dplyr::select(-modified),
-                        rownames = FALSE,
+                          dplyr::select(-modified),rownames = FALSE,
                         options = list(
                           columnDefs = list(list(
                             className = 'dt-center',
@@ -226,21 +223,19 @@ server <- function(input, output, session) {
   output$studtable_all <- 
     DT::renderDataTable(students() %>%
                           arrange(desc(modified)) %>%
-                          dplyr::select(-modified),
-                        rownames = FALSE,
+                          dplyr::select(-modified),rownames = FALSE,
                         options = list(
                           columnDefs = list(list(
                             className = 'dt-center',
                             targets = 0:6))))
   output$stats <- 
-    DT::renderDataTable(rv$stats,
-                        rownames = FALSE,
-                        options = list(
+    DT::renderDataTable(stats(),rownames = FALSE,options = list(
                           columnDefs = list(list(
                             className = 'dt-center',
                             targets = 0:1))))
   
   # Accept Event
+  
   observeEvent(input$accept, {
     
     sid_a <- which(str_detect(input$search,
@@ -250,7 +245,7 @@ server <- function(input, output, session) {
     # Check if (only) one student is selected
     if(length(sid_a) == 1){
       
-      if(students()[sid_a, "accepted"] == FALSE | is.na(students()[sid_a, "accepted"])){
+      if(dbReadTable(con, "students")[sid_a, "accepted"] == FALSE | is.na(dbReadTable(con, "students")[sid_a, "accepted"])){
         # Accept the student, write log and write modification time
         con %>% dbExecute(paste("UPDATE students ",
                                 "SET accepted = '1', log = '", paste(na.omit(c(students()[sid_a, "log"],as.character(Sys.time()), "[A]")), collapse = " "),"', modified = '", Sys.time(), "' ",
@@ -259,12 +254,13 @@ server <- function(input, output, session) {
         # Save a log, backup data, reset- and refocus search field
         log_backup_reset(sid = sid_a, 
                          event = "[A]", 
-                         backup_path = backup_path, 
+                         data = dbReadTable(con, "students"),
+                         stats = dbReadTable(con, "stats"),
                          session = session,
-                         data = students())
+                         backup_path = backup_path)
         
         if((sum(dbReadTable(con, "students") %>% dplyr::filter(accepted == TRUE) %>%
-                nrow() - sum(rv$stats[,"sumstudents"]))) == input$maxnumshift){
+                nrow() - sum(stats()[,"sumstudents"]))) == input$maxnumshift){
           sendSweetAlert(session, title = "Limit Reached",
                          text = "You have reached the maximum number of Students.", type = "warning")
         }
@@ -315,9 +311,10 @@ server <- function(input, output, session) {
       # Save a log, backup data, reset- and refocus search field
       log_backup_reset(sid = sid_d, 
                        event = "[D]", 
-                       backup_path = backup_path, 
+                       data = dbReadTable(con, "students"),
+                       stats = dbReadTable(con, "stats"),
                        session = session,
-                       data = students())
+                       backup_path = backup_path)
     }})
   
   # Note event
@@ -337,10 +334,11 @@ server <- function(input, output, session) {
       # Save a log, backup data, reset- and refocus search field
       log_backup_reset(sid = sid_n, 
                        event = "[N]", 
-                       backup_path = backup_path, 
-                       session = session, 
-                       data = students(),
-                       note = input$note)
+                       data = dbReadTable(con, "students"),
+                       note = input$note,
+                       stats = dbReadTable(con, "stats"),
+                       session = session,
+                       backup_path = backup_path)
       # Clear Note field
       updateSearchInput(session, "note", value = "", trigger = FALSE)
     } else {
@@ -369,13 +367,11 @@ server <- function(input, output, session) {
                             "SET sumstudents = ", (sum(students() %>% dplyr::filter(accepted == TRUE) %>% dplyr::count()) - sum(dbReadTable(con, "stats")[,"sumstudents"])),
                             " WHERE shift = ", min(which(dbReadTable(con, "stats")[,"sumstudents"] == 0)) , sep = ""))
     
-    rv$stats <- dbReadTable(con, "stats")
-    
   })
 }
 
 # options(shiny.host = '192.168.0.2')
-options(shiny.host = '127.0.0.1')
+options(shiny.host = '0.0.0.0')
 options(shiny.port = 8888)
 
 shinyApp(ui, server)
