@@ -31,8 +31,6 @@ dir.create("db", showWarnings = F)
 con <- dbPool(drv = RSQLite::SQLite(), dbname = "db/students_db")
 dbWriteTable(con, "students", students)
 dbWriteTable(con, "stats", stats, overwrite = T)
-
-dbReadTable(con, "stats")
  
 # # Use the example:
 # 
