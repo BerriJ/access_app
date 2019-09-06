@@ -101,7 +101,8 @@ ui <- dashboardPage(skin = "green",
                                  font-size: 16px")
                                               ))),
                                      # Backup path
-                                     htmlOutput("backup"),
+                                     fluidRow(style = "padding-bottom:20px",
+                                              htmlOutput("backup")),
                                      # Include footer
                                      includeCSS("www/footer.css"), includeHTML("www/footer.html")),
                     
@@ -117,6 +118,7 @@ ui <- dashboardPage(skin = "green",
                           h2(htmlOutput("results"), align = "center")
                       ),
                       # Box with various tabs that show subsets of students dataframe
+                      fluidRow(
                       tabBox(
                         width = NULL, title = "Overview",side = "right", selected = "Checked In",
                         tabPanel("Checked In", DT::dataTableOutput("studtable_accept")),
@@ -125,7 +127,7 @@ ui <- dashboardPage(skin = "green",
                         tabPanel("Declined", DT::dataTableOutput("studtable_decline")),
                         tabPanel("All", DT::dataTableOutput("studtable_all")),
                         tabPanel("Stats", DT::dataTableOutput("stats"))
-                      )
+                      ))
                     )
 )
 
