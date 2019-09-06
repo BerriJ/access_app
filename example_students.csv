@@ -1,12 +1,12 @@
-Name;Matr.Number;Accepted;Note;Log;Modified
-James;7173630;FALSE;NA;NA;NA
-Mary;8978944;FALSE;NA;NA;NA
-John;5450612;FALSE;NA;NA;NA
-Jonathan;3071485;FALSE;NA;NA;NA
-Robert;1598562;FALSE;NA;NA;NA
-Jennifer;1225308;FALSE;NA;NA;NA
-Michael;7816217;FALSE;NA;NA;NA
-William;4405705;FALSE;NA;NA;NA
-Elizabeth;3206893;FALSE;NA;NA;NA
-David;8602936;FALSE;NA;NA;NA
-Timo;3030862;FALSE;NA;NA;NA
+forename	name	matrnumber	accepted	note	log	modified	shift	overbooked
+James	Morrison	7173630	NA	NA	NA	NA	1	NA
+Mary	Johnson	8978944	NA	NA	NA	NA	1	NA
+John	Reed	5450612	NA	NA	NA	NA	1	NA
+Jonathan	Berrisch	3071485	NA	NA	NA	NA	1	NA
+Robert	Eich	1598562	NA	NA	NA	NA	1	NA
+Jennifer	Heist	1225308	NA	NA	NA	NA	1	NA
+Michael	Müller	7816217	NA	NA	NA	NA	1	NA
+William	Kaiser	4405705	NA	NA	NA	NA	1	NA
+Elizabeth	Smith	3206893	NA	NA	NA	NA	1	NA
+David	Koch	8602936	NA	NA	NA	NA	1	NA
+Timo	Rammert	3030862	NA	NA	NA	NA	1	NA
