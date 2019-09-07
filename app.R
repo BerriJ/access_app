@@ -1,5 +1,6 @@
 source("packages.R")
 source("functions.R")
+source("styling.R")
 
 # Set options for data tables:
 options(DT.options = list(pageLength = 10, lengthMenu = c(10, 25, 50, 100,250)))
@@ -46,13 +47,7 @@ ui <- dashboardPage(skin = "green",
                                                 width = "84%")),
                                      fluidRow(align = "center", column(10, offset = 1,
                                               actionButton("accept", "",
-                                                                     style = "color: rgba(0, 0, 0, 0.5);
-                         background-color: #00a65a;
-                         width: 100%;
-                         margin: auto;
-                         height: 60px;
-                         border-color:#00a65a;
-                         font-size: 30px",
+                                                                     style = button_accept,
                                                                      icon = icon("user-check")))),
                                      fluidRow(align = "center", style = "padding-top:20px",
                                               column(10, offset = 1, box( width = "NULL", collapsible = T, collapsed = T, title = "Take Note or Decline", background = "red",
@@ -66,13 +61,7 @@ ui <- dashboardPage(skin = "green",
                                                                             width = "100%"),
                                                                           actionButton("decline", # Row for accept decline buttons
                                                                                        "",
-                                                                                       style = "color: rgba(0, 0, 0, 0.5);
-                         background-color: #963226;
-                         width: 99%;
-                         margin: auto;
-                         height: 60px;
-                         border-color:#963226;
-                                 font-size: 30px",
+                                                                                       style = button_decline,
                                                                                        icon = icon("user-times"))
                                                 
                                               ))),
@@ -87,18 +76,12 @@ ui <- dashboardPage(skin = "green",
                                      fluidRow(align = "center", style = "position:fixed, bottom:0",
                                               column(10, offset = 1, box(
                                                 width = "NULL", collapsible = T, collapsed = T, title = "Shift options",background = "maroon",
-                                                tags$style(mycss),
+                                                tags$style(slider_maxnumshift),
                                                 sliderInput("maxnumshift", "Notify me at:", 50, 220, 65, 1, 
                                                             width = "100%", post = " Students"),
                                                 actionButton("finish_shift", # Row for accept decline buttons
                                                              "Close Shift",
-                                                             style = "color: #ffffff;
-                         background-color: #7d0c36;
-                         width: 99%;
-                         margin: auto;
-                         height: 60px;
-                         border-color:#7d0c36;
-                                 font-size: 16px")
+                                                             style = button_finish_shift)
                                               ))),
                                      # Backup path
                                      fluidRow(style = "padding-bottom:20px",

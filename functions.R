@@ -20,13 +20,3 @@ log_backup_reset <- function(sid, event, note = NA, backup_path = backup_path,
   updateSearchInput(session, "search", value = "", trigger = TRUE)
   session$sendCustomMessage("focus_search", "focus")
 }
-
-mycss <- "
-.irs-bar,
-.irs-bar-edge,
-.irs-single,
-.irs-grid-pol {
-  background: #242424;
-  border-color: #242424;
-}
-"
