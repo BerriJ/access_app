@@ -1,6 +1,6 @@
-source("packages.R")
-source("functions.R")
-source("styling.R")
+source("www/packages.R")
+source("www/functions.R")
+source("www/styling.R")
 
 # Set options for data tables:
 options(DT.options = list(pageLength = 10, lengthMenu = c(10, 25, 50, 100,250)))

@@ -32,9 +32,9 @@ con <- dbPool(drv = RSQLite::SQLite(), dbname = "db/students_db")
 dbWriteTable(con, "students", students)
 dbWriteTable(con, "stats", stats, overwrite = T)
  
-# # Use the example:
+# Use the example:
 # 
-# students <- read.csv2("students_example.csv")
+# load(file = "students_example.Rda")
 # stats <- data.frame(shift = c(1,2,3,4), sumstudents = c(0,0,0,0))
 # dir.create("db", showWarnings = F)
 # con <- dbPool(drv = RSQLite::SQLite(), dbname = "db/students_db")

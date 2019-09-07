@@ -8,3 +8,4 @@
 *.xls
 /db
 /backup_log
+*.txt
