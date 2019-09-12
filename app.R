@@ -123,12 +123,12 @@ server <- function(input, output, session) {
   students <- function(){}
   stats <- function(){}
   
-  students <- reactivePoll(intervalMillis = 50, session = session, 
+  students <- reactivePoll(intervalMillis = 500, session = session, 
                            checkFunc = function() {
                              if(all_equal(as.data.frame(students()),dbReadTable(con, "students")) %>% isTRUE()){0}else{1}},
                            valueFunc = function(){dbReadTable(con, "students")})
   
-  stats <- reactivePoll(intervalMillis = 50, session = session, 
+  stats <- reactivePoll(intervalMillis = 500, session = session, 
                            checkFunc = function() {
                              if(all_equal(as.data.frame(stats()),dbReadTable(con, "stats")) %>% isTRUE()){0}else{1}},
                            valueFunc = function(){dbReadTable(con, "stats")})
@@ -148,12 +148,15 @@ server <- function(input, output, session) {
     overbooked <- shift <- students() %>% dplyr::filter(
       str_detect(input$search, as.character(students()$matrnumber)) |
         name == input$search) %>% dplyr::select(overbooked) %>% unlist()
-    if(length(name > 0)){
+    if(length(name) ==1){
       if(overbooked == TRUE){
         HTML(paste(forename, name, "<br/>", "Shift:", shift, "<br/>", '<strong style="color: red;">Overbooked</strong>' ))
       } else {
         HTML(paste(forename, name, "<br/>", "Shift:", shift ))  
-      }} else {HTML("No student selected.")}
+      }} else {
+        if(length(name) > 1) {HTML("Selection not unambiguous!")
+          } else {HTML("No student selected.")}
+        }
   })
   
   # Render sum of accepted students
@@ -400,7 +403,7 @@ server <- function(input, output, session) {
 }
 
 # options(shiny.host = '192.168.0.2')
-options(shiny.host = '0.0.0.0')
+options(shiny.host = '192.168.0.2')
 options(shiny.port = 8888)
 
 shinyApp(ui, server)
