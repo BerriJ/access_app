@@ -18,7 +18,7 @@ while(is.null(backup_path)){
 }
 
 # Create log folder if not existent
-dir.create("backup_log", showWarnings = F)
+dir.create("backup", showWarnings = F)
 
 con <- dbPool(drv = RSQLite::SQLite(), dbname = "db/students_db")
 
@@ -403,7 +403,6 @@ server <- function(input, output, session) {
 }
 
 # options(shiny.host = '192.168.0.2')
-options(shiny.host = '192.168.0.2')
-options(shiny.port = 8888)
+# options(shiny.port = 8888)
 
 shinyApp(ui, server)
