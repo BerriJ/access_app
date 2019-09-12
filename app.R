@@ -77,7 +77,7 @@ ui <- dashboardPage(skin = "green",
                                               column(10, offset = 1, box(
                                                 width = "NULL", collapsible = T, collapsed = T, title = "Shift options",background = "maroon",
                                                 tags$style(slider_maxnumshift),
-                                                sliderInput("maxnumshift", "Notify me at:", 50, 220, 65, 1, 
+                                                sliderInput("maxnumshift", "Notify me at:", 2, 220, 3, 1, 
                                                             width = "100%", post = " Students"),
                                                 actionButton("finish_shift", # Row for accept decline buttons
                                                              "Close Shift",
@@ -231,25 +231,31 @@ server <- function(input, output, session) {
     if(length(sid_a) == 1){
       
       if(dbReadTable(con, "students")[sid_a, "accepted"] == FALSE | is.na(dbReadTable(con, "students")[sid_a, "accepted"])){
-        # Accept the student, write log and write modification time
-        con %>% dbExecute(paste("UPDATE students ",
-                                "SET accepted = '1', log = '", paste(na.omit(c(students()[sid_a, "log"],as.character(Sys.time()), "[A]")), collapse = " "),"', modified = '", Sys.time(), "' ",
-                                "WHERE matrnumber = ",students()[sid_a, "matrnumber"], sep = ""))
         
-        # Save a log, backup data, reset- and refocus search field
-        log_backup_reset(sid = sid_a, 
-                         event = "[A]", 
-                         data = dbReadTable(con, "students"),
-                         stats = dbReadTable(con, "stats"),
-                         session = session,
-                         backup_path = backup_path)
-        
+        # Check if limit is reached
         if((sum(dbReadTable(con, "students") %>% dplyr::filter(accepted == TRUE) %>%
-                nrow() - sum(stats()[,"sumstudents"]))) == input$maxnumshift){
-          sendSweetAlert(session, title = "Limit Reached",
-                         text = "You have reached the maximum number of Students.", type = "warning")
+                nrow() - sum(stats()[,"sumstudents"]))) >= (input$maxnumshift-1)){
+          confirmSweetAlert(
+            session = session,
+            inputId = "limit_confirm",
+            type = "warning",
+            title = "Limit Reached!",
+            text = "You've reached your specified limit. Do you still want to accept this student?",
+            danger_mode = TRUE)
+        } else {
+          # Accept the student, write log and write modification time
+          con %>% dbExecute(paste("UPDATE students ",
+                                  "SET accepted = '1', log = '", paste(na.omit(c(students()[sid_a, "log"],as.character(Sys.time()), "[A]")), collapse = " "),"', modified = '", Sys.time(), "' ",
+                                  "WHERE matrnumber = ",students()[sid_a, "matrnumber"], sep = ""))
+          
+          # Save a log, backup data, reset- and refocus search field
+          log_backup_reset(sid = sid_a, 
+                           event = "[A]", 
+                           data = dbReadTable(con, "students"),
+                           stats = dbReadTable(con, "stats"),
+                           session = session,
+                           backup_path = backup_path)
         }
-        
       } else {
         sendSweetAlert(session, title = "Already Accepted",
                        text = "This student is already checked in! Consider taking a note!")
@@ -259,6 +265,27 @@ server <- function(input, output, session) {
                      text = "Please select one student.")
     }
   })
+  
+  # Accept if Limit is reached but user has confirmed the checkin
+  observeEvent(input$limit_confirm, {
+    if(isTRUE(input$limit_confirm)) {
+      
+      sid_a <- which(str_detect(input$search,
+                                as.character(students()$matrnumber)) |
+                       students()$name == input$search)
+      
+      con %>% dbExecute(paste("UPDATE students ",
+                              "SET accepted = '1', log = '", paste(na.omit(c(students()[sid_a, "log"],as.character(Sys.time()), "[A]")), collapse = " "),"', modified = '", Sys.time(), "' ",
+                              "WHERE matrnumber = ",students()[sid_a, "matrnumber"], sep = ""))
+      
+      # Save a log, backup data, reset- and refocus search field
+      log_backup_reset(sid = sid_a, 
+                       event = "[A]", 
+                       data = dbReadTable(con, "students"),
+                       stats = dbReadTable(con, "stats"),
+                       session = session,
+                       backup_path = backup_path)
+    }})
   
   # Decline Event
   # Ask user to confirm or cancel
