@@ -255,6 +255,12 @@ server <- function(input, output, session) {
                            stats = dbReadTable(con, "stats"),
                            session = session,
                            backup_path = backup_path)
+          
+          # Check if student is overbooked:
+          if(students()[sid_a, "overbooked"] == TRUE){
+            sendSweetAlert(session, title = "Overbooked",
+                           text = "This student is part of the overbooking. Seperate him/her from the crowd.")
+          }
         }
       } else {
         sendSweetAlert(session, title = "Already Accepted",
@@ -285,6 +291,11 @@ server <- function(input, output, session) {
                        stats = dbReadTable(con, "stats"),
                        session = session,
                        backup_path = backup_path)
+      
+      if(students()[sid_a, "overbooked"] == TRUE){
+        sendSweetAlert(session, title = "Overbooked",
+                       text = "This student is part of the overbooking. Seperate him/her from the crowd.")
+      }
     }})
   
   # Decline Event
