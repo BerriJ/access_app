@@ -145,9 +145,15 @@ server <- function(input, output, session) {
     shift <- students() %>% dplyr::filter(
       str_detect(input$search, as.character(students()$matrnumber)) |
         name == input$search) %>% dplyr::select(shift) %>% unlist()
+    overbooked <- shift <- students() %>% dplyr::filter(
+      str_detect(input$search, as.character(students()$matrnumber)) |
+        name == input$search) %>% dplyr::select(overbooked) %>% unlist()
     if(length(name > 0)){
-      HTML(paste(forename, name, "<br/>", "Shift:", shift )) 
-    } else {HTML("No student selected.")}
+      if(overbooked == TRUE){
+        HTML(paste(forename, name, "<br/>", "Shift:", shift, "<br/>", '<strong style="color: red;">Overbooked</strong>' ))
+      } else {
+        HTML(paste(forename, name, "<br/>", "Shift:", shift ))  
+      }} else {HTML("No student selected.")}
   })
   
   # Render sum of accepted students
