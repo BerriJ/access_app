@@ -77,7 +77,7 @@ ui <- dashboardPage(skin = "green",
                                               column(10, offset = 1, box(
                                                 width = "NULL", collapsible = T, collapsed = T, title = "Shift options",background = "maroon",
                                                 tags$style(slider_maxnumshift),
-                                                sliderInput("maxnumshift", "Notify me at:", 2, 220, 3, 1, 
+                                                sliderInput("maxnumshift", "Notify me at:", 25, 220, 65, 1, 
                                                             width = "100%", post = " Students"),
                                                 actionButton("finish_shift", # Row for accept decline buttons
                                                              "Close Shift",
@@ -145,7 +145,7 @@ server <- function(input, output, session) {
     shift <- students() %>% dplyr::filter(
       str_detect(input$search, as.character(students()$matrnumber)) |
         name == input$search) %>% dplyr::select(shift) %>% unlist()
-    overbooked <- shift <- students() %>% dplyr::filter(
+    overbooked <- students() %>% dplyr::filter(
       str_detect(input$search, as.character(students()$matrnumber)) |
         name == input$search) %>% dplyr::select(overbooked) %>% unlist()
     if(length(name) ==1){
@@ -404,5 +404,4 @@ server <- function(input, output, session) {
 
 # options(shiny.host = '192.168.0.2')
 # options(shiny.port = 8888)
-
 shinyApp(ui, server)
