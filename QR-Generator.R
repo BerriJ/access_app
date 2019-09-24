@@ -34,4 +34,6 @@ for (i in 1:nrow(Full)){
   dev.off()
 }
 
+colnames(Full) <- c("user", "number", "mail", "name", "forename", "path")
+
 write.csv2(file = paste(file_path, "/table.csv", sep = ""), Full, row.names = F)
