@@ -13,16 +13,14 @@ students <- dataset %>% as_tibble() %>%
   add_column("accepted" = NA, "note" = NA, "log" = NA, "modified" = NA, "shift" = NA, "overbooked" = NA) %>%
   filter_all(any_vars(!is.na(.)))
 
-seats <-  150    # set No. of seats available
-overbook <- 0.05    # factor for overbooking (input as decimal)
+students$shift <- 1
 
-booking <- seats*(1+overbook)
-shift_no <- ceiling(nrow(students)/booking)
-students$shift <- rep(1:shift_no, each = booking)[1:nrow(students)]
+# Identification of first overbooked student
 
-write.csv2(file = "example_students2.csv", students, row.names = F)
+overbooked_start <- (students$name == "Selik") %>% which()
 
-# students$overbooked[(rep(1:2, each = (booking-seats))*(seats+1):booking)] <- "OVERBOOKED"
+students$overbooked[overbooked_start:nrow(students)] <- TRUE
+students$overbooked[-c(overbooked_start:nrow(students))] <- FALSE
 
 # create summary table:
 
