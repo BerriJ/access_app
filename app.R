@@ -13,14 +13,15 @@ rstudioapi::showDialog("Backup Path", message = "The next step asks you to selec
 backup_path <- rstudioapi::selectDirectory(caption = "Backup Folder")
 
 while(is.null(backup_path)){
-  rstudioapi::showDialog("Backup Path", message = "Seriously: select a backup folder!")
+  rstudioapi::showDialog("Backup Path", 
+                         message = "Seriously: select a backup folder!")
   backup_path <- rstudioapi::selectDirectory(caption = "Backup Folder")
 }
 
 # Create log folder if not existent
 dir.create("backup", showWarnings = F)
 
-con <- dbPool(drv = RSQLite::SQLite(), dbname = "db/students_db")
+con <- dbPool(drv = RSQLite::SQLite(), dbname = "db/students_db") 
 
 # Connect to database:
 onStop(function() {
@@ -39,7 +40,7 @@ ui <- dashboardPage(skin = "green",
                                      
                                      fluidRow(align = "center",
                                               searchInput(
-                                                inputId = "search", 
+                                                inputId = "search",
                                                 label = h3("Search by Name or Number"), 
                                                 placeholder = "Press Enter to search.", 
                                                 btnSearch = icon("search"), 
@@ -73,9 +74,17 @@ ui <- dashboardPage(skin = "green",
                                      fluidRow(align = "center",style = "position:fixed, bottom:0",
                                               column(10, offset = 1,valueBoxOutput("progressBox2", width = NULL))),
                                      
+                                     # Shift options
                                      fluidRow(align = "center", style = "position:fixed, bottom:0",
                                               column(10, offset = 1, box(
                                                 width = "NULL", collapsible = T, collapsed = T, title = "Shift options",background = "maroon",
+                                                radioGroupButtons(
+                                                  inputId = "shiftnumber",
+                                                  label = "Shift", 
+                                                  choices = c("1", "2", "3", "4"),
+                                                  status = "success",
+                                                  width = "100%"
+                                                ),
                                                 tags$style(slider_maxnumshift),
                                                 sliderInput("maxnumshift", "Notify me at:", 25, 220, 65, 1, 
                                                             width = "100%", post = " Students"),
@@ -120,8 +129,9 @@ ui <- dashboardPage(skin = "green",
 
 server <- function(input, output, session) {
   
-  students <- function(){}
-  stats <- function(){}
+  students  <- function(){}
+  stats     <- function(){}
+  shiftnum     <- function(){}
   
   students <- reactivePoll(intervalMillis = 500, session = session, 
                            checkFunc = function() {
@@ -132,6 +142,11 @@ server <- function(input, output, session) {
                            checkFunc = function() {
                              if(all_equal(as.data.frame(stats()),dbReadTable(con, "stats")) %>% isTRUE()){0}else{1}},
                            valueFunc = function(){dbReadTable(con, "stats")})
+  
+  shiftnum <- reactivePoll(intervalMillis = 1000, session = session, 
+                        checkFunc = function() {
+                          if(all_equal(as.data.frame(shiftnum()),dbReadTable(con, "shift")) %>% isTRUE()){0}else{1}},
+                        valueFunc = function(){dbReadTable(con, "shift")})
   
   # Render the search results:
   
@@ -172,6 +187,26 @@ server <- function(input, output, session) {
                                                                dplyr::filter(!is.na(note)) %>%
                                                                dplyr::count())), "students with note.",
                                                   icon = icon("user-edit"), color = "yellow")})
+  
+  # Handle the current shift
+  
+  observeEvent(input$shiftnumber, {
+    
+    print(input$shiftnumber)
+    con %>% dbExecute(paste("UPDATE shift ",
+                            "SET shift = '", input$shiftnumber,"'", sep = "" ,collapse = ""))
+    print("Shiftnum action triggered")
+    
+    })
+  
+  observeEvent(shiftnum(), {
+    print("trigger!")
+    updateRadioGroupButtons(session, inputId = "shiftnumber",
+                            label = "Shift",
+                            choices = c("1", "2", "3", "4"),
+                            status = "success",
+                            selected = shiftnum()$shift)
+  })
   
   # Render the backup path
   

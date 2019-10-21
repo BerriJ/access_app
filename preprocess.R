@@ -24,12 +24,15 @@ students$overbooked[-c(overbooked_start:nrow(students))] <- FALSE
 
 # create summary table:
 
-stats <- data.frame(shift = c(1,2,3,4), sumstudents = c(0,0,0,0))
+stats <- data.frame(shift = c(1,2,3,4), 
+                    sumstudents = c(0,0,0,0))
+shift <- data.frame(shift = c(1))
 dir.create("db", showWarnings = F)
 con <- dbPool(drv = RSQLite::SQLite(), dbname = "db/students_db")
 dbWriteTable(con, "students", students)
 dbWriteTable(con, "stats", stats, overwrite = T)
- 
+dbWriteTable(con, "shift", shift, overwrite = T)
+
 # Use the example:
 # 
 # load(file = "students_example.Rda")
