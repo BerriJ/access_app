@@ -191,16 +191,11 @@ server <- function(input, output, session) {
   # Handle the current shift
   
   observeEvent(input$shiftnumber, {
-    
-    print(input$shiftnumber)
     con %>% dbExecute(paste("UPDATE shift ",
                             "SET shift = '", input$shiftnumber,"'", sep = "" ,collapse = ""))
-    print("Shiftnum action triggered")
-    
     })
   
   observeEvent(shiftnum(), {
-    print("trigger!")
     updateRadioGroupButtons(session, inputId = "shiftnumber",
                             label = "Shift",
                             choices = c("1", "2", "3", "4"),
@@ -274,44 +269,56 @@ server <- function(input, output, session) {
     # Check if (only) one student is selected
     if(length(sid_a) == 1){
       
-      if(dbReadTable(con, "students")[sid_a, "accepted"] == FALSE | is.na(dbReadTable(con, "students")[sid_a, "accepted"])){
+      # Check if student belongs to the current shift
+      
+      if(students() %>% select(shift) %>% dplyr::slice(sid_a) %>% unlist() == shiftnum()$shift){
         
-        # Check if limit is reached
-        if((sum(dbReadTable(con, "students") %>% dplyr::filter(accepted == TRUE) %>%
-                nrow() - sum(stats()[,"sumstudents"]))) >= (input$maxnumshift-1)){
-          confirmSweetAlert(
-            session = session,
-            inputId = "limit_confirm",
-            type = "warning",
-            title = "Limit Reached!",
-            text = "You've reached your specified limit. Do you still want to accept this student?",
-            danger_mode = TRUE)
-        } else {
-          # Accept the student, write log and write modification time
-          con %>% dbExecute(paste("UPDATE students ",
-                                  "SET accepted = '1', log = '", paste(na.omit(c(students()[sid_a, "log"],as.character(Sys.time()), "[A]")), collapse = " "),"', modified = '", Sys.time(), "' ",
-                                  "WHERE matrnumber = ",students()[sid_a, "matrnumber"], sep = ""))
+        # Check if student is already accepted in database
+        if(dbReadTable(con, "students")[sid_a, "accepted"] == FALSE | is.na(dbReadTable(con, "students")[sid_a, "accepted"])){
           
-          # Save a log, backup data, reset- and refocus search field
-          log_backup_reset(sid = sid_a, 
-                           event = "[A]", 
-                           data = dbReadTable(con, "students"),
-                           stats = dbReadTable(con, "stats"),
-                           session = session,
-                           backup_path = backup_path)
-          
-          # Check if student is overbooked:
-          if(students()[sid_a, "overbooked"] == TRUE){
-            sendSweetAlert(session, title = "Overbooked",
-                           text = "This student is part of the overbooking. Seperate him/her from the crowd.")
+          # Check if limit is reached
+          if((sum(dbReadTable(con, "students") %>% dplyr::filter(accepted == TRUE) %>%
+                  nrow() - sum(stats()[,"sumstudents"]))) >= (input$maxnumshift-1)){
+            confirmSweetAlert(
+              session = session,
+              inputId = "limit_confirm",
+              type = "warning",
+              title = "Limit Reached!",
+              text = "You've reached your specified limit. Do you still want to accept this student?",
+              danger_mode = TRUE)
+          } else {
+            # Accept the student, write log and write modification time
+            con %>% dbExecute(paste("UPDATE students ",
+                                    "SET accepted = '1', log = '", paste(na.omit(c(students()[sid_a, "log"],as.character(Sys.time()), "[A]")), collapse = " "),"', modified = '", Sys.time(), "' ",
+                                    "WHERE matrnumber = ",students()[sid_a, "matrnumber"], sep = ""))
+            
+            # Save a log, backup data, reset- and refocus search field
+            log_backup_reset(sid = sid_a, 
+                             event = "[A]", 
+                             data = dbReadTable(con, "students"),
+                             stats = dbReadTable(con, "stats"),
+                             session = session,
+                             backup_path = backup_path)
+            
+            # Check if student is overbooked:
+            if(students()[sid_a, "overbooked"] == TRUE){
+              sendSweetAlert(session, title = "Overbooked",
+                             text = "This student is part of the overbooking. Seperate him/her from the crowd.")
+            }
           }
+        } else {
+          sendSweetAlert(session, title = "Already Accepted",
+                         text = "This student is already checked in! Consider taking a note!")
         }
       } else {
-        sendSweetAlert(session, title = "Already Accepted",
-                       text = "This student is already checked in! Consider taking a note!")
+        sendSweetAlert(session, title = "Shift",
+                       text = paste("The current selected shift is shift",
+                                    input$shiftnumber, "but this student belongs to shift",
+                                    students() %>% select(shift) %>% 
+                                      dplyr::slice(sid_a) %>% unlist()))
       }
     } else {
-      sendSweetAlert(session, title = "Selection",
+      sendSweetAlert(session, title = "Selection not unambiguous",
                      text = "Please select one student.")
     }
   })
